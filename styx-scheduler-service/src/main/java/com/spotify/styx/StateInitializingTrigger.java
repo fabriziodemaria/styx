@@ -20,6 +20,11 @@
 
 package com.spotify.styx;
 
+import static com.spotify.styx.model.Partitioning.DAYS;
+import static com.spotify.styx.model.Partitioning.HOURS;
+import static com.spotify.styx.model.Partitioning.MONTHS;
+import static com.spotify.styx.model.Partitioning.WEEKS;
+
 import com.spotify.styx.StyxScheduler.StateFactory;
 import com.spotify.styx.docker.WorkflowValidator;
 import com.spotify.styx.model.Event;
@@ -72,17 +77,15 @@ final class StateInitializingTrigger implements TriggerListener {
   }
 
   private static String toParameter(Partitioning partitioning, Instant instant) {
-    switch (partitioning) {
-      case DAYS:
-      case WEEKS:
-        return ParameterUtil.formatDate(instant);
-      case HOURS:
-        return ParameterUtil.formatDateHour(instant);
-      case MONTHS:
-        return ParameterUtil.formatMonth(instant);
+    if (partitioning.equals(DAYS) || partitioning.equals(WEEKS)) {
+      return ParameterUtil.formatDate(instant);
+    } else if (partitioning.equals(HOURS)) {
+      return ParameterUtil.formatDateHour(instant);
+    } else if (partitioning.equals(MONTHS)) {
+      return ParameterUtil.formatMonth(instant);
 
-      default:
-        throw new IllegalArgumentException("Unknown partitioning " + partitioning);
+    } else {
+      throw new IllegalArgumentException("Unknown partitioning " + partitioning);
     }
   }
 }

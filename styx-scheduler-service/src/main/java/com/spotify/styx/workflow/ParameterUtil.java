@@ -20,6 +20,10 @@
 
 package com.spotify.styx.workflow;
 
+import static com.spotify.styx.model.Partitioning.DAYS;
+import static com.spotify.styx.model.Partitioning.HOURS;
+import static com.spotify.styx.model.Partitioning.MONTHS;
+import static com.spotify.styx.model.Partitioning.WEEKS;
 import static java.time.ZoneOffset.UTC;
 import static java.time.temporal.ChronoField.MONTH_OF_YEAR;
 import static java.time.temporal.ChronoField.YEAR;
@@ -119,17 +123,16 @@ public final class ParameterUtil {
    * Converts {@link Partitioning} to {@link ChronoUnit}.
    */
   public static TemporalUnit partitioningToTemporalUnit(Partitioning partitioning) {
-    switch (partitioning) {
-      case HOURS:
-        return ChronoUnit.HOURS;
-      case DAYS:
-        return ChronoUnit.DAYS;
-      case WEEKS:
-        return ChronoUnit.WEEKS;
-      case MONTHS:
-        return ChronoUnit.MONTHS;
-      default:
-        throw new IllegalArgumentException("Partitioning not supported: " + partitioning);
+    if (partitioning.equals(HOURS)) {
+      return ChronoUnit.HOURS;
+    } else if (partitioning.equals(DAYS)) {
+      return ChronoUnit.DAYS;
+    } else if (partitioning.equals(WEEKS)) {
+      return ChronoUnit.WEEKS;
+    } else if (partitioning.equals(MONTHS)) {
+      return ChronoUnit.MONTHS;
+    } else {
+      throw new IllegalArgumentException("Partitioning not supported: " + partitioning);
     }
   }
 
@@ -138,63 +141,64 @@ public final class ParameterUtil {
    * the result would be '2016-10-10T15:00:000'.
    */
   public static Instant truncateInstant(Instant instant, Partitioning partitioning) {
-    switch (partitioning) {
-      case HOURS:
-        return instant.truncatedTo(ChronoUnit.HOURS);
-      case DAYS:
-        return instant.truncatedTo(ChronoUnit.DAYS);
-      case WEEKS:
-        LocalDateTime dateTime = LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
-        int daysToSubtract = dateTime.getDayOfWeek().getValue();
-        dateTime = dateTime.minusDays(daysToSubtract - 1);
-        Instant resultInstant = dateTime.toInstant(ZoneOffset.UTC);
-        return resultInstant.truncatedTo(ChronoUnit.DAYS);
-      case MONTHS:
-        ZonedDateTime truncatedToMonth = instant.atZone(ZoneOffset.UTC).truncatedTo(ChronoUnit.DAYS).withDayOfMonth(1);
-        return truncatedToMonth.toInstant();
-      default:
-        throw new IllegalArgumentException("Partitioning not supported: " + partitioning);
+    if (partitioning.equals(HOURS)) {
+      return instant.truncatedTo(ChronoUnit.HOURS);
+
+    } else if (partitioning.equals(DAYS)) {
+      return instant.truncatedTo(ChronoUnit.DAYS);
+
+    } else if (partitioning.equals(WEEKS)) {
+      LocalDateTime dateTime = LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
+      int daysToSubtract = dateTime.getDayOfWeek().getValue();
+      dateTime = dateTime.minusDays(daysToSubtract - 1);
+      Instant resultInstant = dateTime.toInstant(ZoneOffset.UTC);
+      return resultInstant.truncatedTo(ChronoUnit.DAYS);
+
+    } else if (partitioning.equals(MONTHS)) {
+      ZonedDateTime truncatedToMonth = instant.atZone(ZoneOffset.UTC).truncatedTo(ChronoUnit.DAYS).withDayOfMonth(1);
+      return truncatedToMonth.toInstant();
+    } else {
+      throw new IllegalArgumentException("Partitioning not supported: " + partitioning);
     }
   }
 
   public static Either<String, Instant> instantFromWorkflowInstance(
       WorkflowInstance workflowInstance,
       Partitioning partitioning) {
-    switch (partitioning) {
-      case HOURS:
-        try {
-          final LocalDateTime localDateTime = LocalDateTime.parse(
-              workflowInstance.parameter(),
-              DateTimeFormatter.ofPattern(HOUR_PATTERN));
-          return Either.right(localDateTime.toInstant(UTC));
-        } catch (DateTimeParseException e) {
-          return Either.left(parseErrorMessage(partitioning, HOUR_PATTERN));
-        }
+    if (partitioning.equals(HOURS)) {
+      try {
+        final LocalDateTime localDateTime = LocalDateTime.parse(
+            workflowInstance.parameter(),
+            DateTimeFormatter.ofPattern(HOUR_PATTERN));
+        return Either.right(localDateTime.toInstant(UTC));
+      } catch (DateTimeParseException e) {
+        return Either.left(parseErrorMessage(partitioning, HOUR_PATTERN));
+      }
 
-      case DAYS:
-        try {
-          final LocalDate localDate = LocalDate.parse(
-              workflowInstance.parameter(),
-              DateTimeFormatter.ofPattern(DAY_PATTERN));
-          return Either.right(localDate.atStartOfDay().toInstant(UTC));
-        } catch (DateTimeParseException e) {
-          return Either.left(parseErrorMessage(partitioning, DAY_PATTERN));
-        }
+    } else if (partitioning.equals(DAYS)) {
+      try {
+        final LocalDate localDate = LocalDate.parse(
+            workflowInstance.parameter(),
+            DateTimeFormatter.ofPattern(DAY_PATTERN));
+        return Either.right(localDate.atStartOfDay().toInstant(UTC));
+      } catch (DateTimeParseException e) {
+        return Either.left(parseErrorMessage(partitioning, DAY_PATTERN));
+      }
 
-      case WEEKS:
-        try {
-          LocalDate localDate = LocalDate.parse(
-              workflowInstance.parameter(),
-              DateTimeFormatter.ofPattern(DAY_PATTERN));
-          int daysToSubtract = localDate.getDayOfWeek().getValue();
-          localDate = localDate.minusDays(daysToSubtract - 1);
-          return Either.right(localDate.atStartOfDay().toInstant(UTC));
-        } catch (DateTimeParseException e) {
-          return Either.left(parseErrorMessage(partitioning, DAY_PATTERN));
-        }
+    } else if (partitioning.equals(WEEKS)) {
+      try {
+        LocalDate localDate = LocalDate.parse(
+            workflowInstance.parameter(),
+            DateTimeFormatter.ofPattern(DAY_PATTERN));
+        int daysToSubtract = localDate.getDayOfWeek().getValue();
+        localDate = localDate.minusDays(daysToSubtract - 1);
+        return Either.right(localDate.atStartOfDay().toInstant(UTC));
+      } catch (DateTimeParseException e) {
+        return Either.left(parseErrorMessage(partitioning, DAY_PATTERN));
+      }
 
-      default:
-        return Either.left("Partitioning not supported: " + partitioning);
+    } else {
+      return Either.left("Partitioning not supported: " + partitioning);
     }
   }
 
