@@ -27,6 +27,7 @@ import com.cronutils.model.definition.CronDefinition;
 import com.cronutils.model.definition.CronDefinitionBuilder;
 import com.cronutils.model.time.ExecutionTime;
 import com.cronutils.parser.CronParser;
+import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Locale;
@@ -62,7 +63,7 @@ public class CronTest {
   public void name() throws Exception {
     print("hourly", "0 * * * *");
     print("daily", "0 0 * * *");
-    print("weekly", "0 0 * * MON");
+    print("weekly", "0 0 * * mon");
     print("monthly", "0 0 1 * *");
     print("yearly", "0 0 1 1 *");
 
@@ -95,5 +96,8 @@ public class CronTest {
     // Get date for next execution after that
     ZonedDateTime nextNextExecution = executionTime.nextExecution(nextExecution);
     System.out.println("nextNextExecution = " + nextNextExecution);
+
+    Duration duration = executionTime.timeToNextExecution(lastExecution);
+    System.out.println("duration = " + duration);
   }
 }

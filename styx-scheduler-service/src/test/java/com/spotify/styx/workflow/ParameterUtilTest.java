@@ -21,8 +21,8 @@
 package com.spotify.styx.workflow;
 
 import static com.spotify.styx.workflow.ParameterUtil.decrementInstant;
-import static com.spotify.styx.workflow.ParameterUtil.incrementInstant;
-import static com.spotify.styx.workflow.ParameterUtil.truncateInstant;
+import static com.spotify.styx.workflow.ParameterUtil.lastInstant;
+import static com.spotify.styx.workflow.ParameterUtil.nextInstant;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 
@@ -76,42 +76,42 @@ public class ParameterUtilTest {
   }
 
   @Test
-  public void shouldIncrementInstant() throws Exception {
-    final Instant timePlusHour = Instant.parse("2016-01-19T10:11:22.333Z");
-    final Instant timePlusDay = Instant.parse("2016-01-20T09:11:22.333Z");
-    final Instant timePlusWeek = Instant.parse("2016-01-26T09:11:22.333Z");
-    final Instant timePlusMonth = Instant.parse("2016-02-19T09:11:22.333Z");
+  public void shouldGetLastInstant() throws Exception {
+    final Instant lastTimeHours = Instant.parse("2016-01-19T09:00:00.00Z");
+    final Instant lastTimeDays = Instant.parse("2016-01-19T00:00:00.00Z");
+    final Instant lastTimeWeeks = Instant.parse("2016-01-18T00:00:00.00Z");
+    final Instant lastTimeMonths = Instant.parse("2016-01-01T00:00:00.00Z");
 
-    final Instant hour = incrementInstant(TIME, Partitioning.HOURS);
-    assertThat(hour, is(timePlusHour));
+    final Instant hour = lastInstant(TIME, Partitioning.HOURS);
+    assertThat(hour, is(lastTimeHours));
 
-    final Instant day = incrementInstant(TIME, Partitioning.DAYS);
-    assertThat(day, is(timePlusDay));
+    final Instant day = lastInstant(TIME, Partitioning.DAYS);
+    assertThat(day, is(lastTimeDays));
 
-    final Instant week = incrementInstant(TIME, Partitioning.WEEKS);
-    assertThat(week, is(timePlusWeek));
+    final Instant weeks = lastInstant(TIME, Partitioning.WEEKS);
+    assertThat(weeks, is(lastTimeWeeks));
 
-    final Instant month = incrementInstant(TIME, Partitioning.MONTHS);
-    assertThat(month, is(timePlusMonth));
+    final Instant months = lastInstant(TIME, Partitioning.MONTHS);
+    assertThat(months, is(lastTimeMonths));
   }
 
   @Test
-  public void shouldTruncateInstant() throws Exception {
-    final Instant truncatedTimeHours = Instant.parse("2016-01-19T09:00:00.00Z");
-    final Instant truncatedTimeDays = Instant.parse("2016-01-19T00:00:00.00Z");
-    final Instant truncatedTimeWeeks = Instant.parse("2016-01-18T00:00:00.00Z");
-    final Instant truncatedTimeMonths = Instant.parse("2016-01-01T00:00:00.00Z");
+  public void shouldGetNextInstant() throws Exception {
+    final Instant nextTimeHours = Instant.parse("2016-01-19T10:00:00.00Z");
+    final Instant nextTimeDays = Instant.parse("2016-01-20T00:00:00.00Z");
+    final Instant nextTimeWeeks = Instant.parse("2016-01-25T00:00:00.00Z");
+    final Instant nextTimeMonths = Instant.parse("2016-02-01T00:00:00.00Z");
 
-    final Instant hour = truncateInstant(TIME, Partitioning.HOURS);
-    assertThat(hour, is(truncatedTimeHours));
+    final Instant hour = nextInstant(TIME, Partitioning.HOURS);
+    assertThat(hour, is(nextTimeHours));
 
-    final Instant day = truncateInstant(TIME, Partitioning.DAYS);
-    assertThat(day, is(truncatedTimeDays));
+    final Instant day = nextInstant(TIME, Partitioning.DAYS);
+    assertThat(day, is(nextTimeDays));
 
-    final Instant weeks = truncateInstant(TIME, Partitioning.WEEKS);
-    assertThat(weeks, is(truncatedTimeWeeks));
+    final Instant weeks = nextInstant(TIME, Partitioning.WEEKS);
+    assertThat(weeks, is(nextTimeWeeks));
 
-    final Instant months = truncateInstant(TIME, Partitioning.MONTHS);
-    assertThat(months, is(truncatedTimeMonths));
+    final Instant months = nextInstant(TIME, Partitioning.MONTHS);
+    assertThat(months, is(nextTimeMonths));
   }
 }

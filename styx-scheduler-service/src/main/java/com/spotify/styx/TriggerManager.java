@@ -21,8 +21,8 @@
 package com.spotify.styx;
 
 import static com.spotify.styx.workflow.ParameterUtil.decrementInstant;
-import static com.spotify.styx.workflow.ParameterUtil.incrementInstant;
-import static com.spotify.styx.workflow.ParameterUtil.truncateInstant;
+import static com.spotify.styx.workflow.ParameterUtil.lastInstant;
+import static com.spotify.styx.workflow.ParameterUtil.nextInstant;
 import static java.util.Objects.requireNonNull;
 
 import com.google.common.base.Throwables;
@@ -76,7 +76,7 @@ public class TriggerManager {
     map.entrySet().forEach(entry -> {
       final Workflow workflow = entry.getKey();
       final Partitioning partitioning = workflow.schedule().partitioning();
-      final Instant next = entry.getValue().orElse(truncateInstant(now, partitioning));
+      final Instant next = entry.getValue().orElse(lastInstant(now, partitioning));
 
       if (next.isAfter(now)) {
         return;
@@ -93,7 +93,7 @@ public class TriggerManager {
         }
       }
 
-      Instant nextNaturalTrigger = incrementInstant(next, partitioning);
+      Instant nextNaturalTrigger = nextInstant(next, partitioning);
       try {
         storage.updateNextNaturalTrigger(workflow.id(), nextNaturalTrigger);
       } catch (IOException e) {

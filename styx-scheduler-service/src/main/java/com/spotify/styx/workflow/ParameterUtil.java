@@ -28,6 +28,7 @@ import static java.time.ZoneOffset.UTC;
 import static java.time.temporal.ChronoField.MONTH_OF_YEAR;
 import static java.time.temporal.ChronoField.YEAR;
 
+import com.cronutils.model.time.ExecutionTime;
 import com.spotify.styx.model.Partitioning;
 import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowInstance;
@@ -35,7 +36,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -99,6 +99,8 @@ public final class ParameterUtil {
    * e.g. Given an instant '2016-10-10T15:00:000' and hourly {@link Partitioning}, the adjusted
    * instant will return '2016-10-10T14:00:000'.
    *
+   * <p>todo: used only for parameter passing (previous partition)
+   *
    * @param instant The instant to adjust.
    * @param partitioning The frequency unit to adjust the instant for.
    */
@@ -110,19 +112,9 @@ public final class ParameterUtil {
   }
 
   /**
-   * Increments an instant for an amount of 1 {@link Partitioning} unit.
-   */
-  public static Instant incrementInstant(Instant instant, Partitioning partitioning) {
-    LocalDateTime dateTime = LocalDateTime.ofInstant(instant, ZoneId.of(UTC.toString()));
-    dateTime = dateTime.plus(1, partitioningToTemporalUnit(partitioning));
-    Instant updatedInstant = dateTime.atZone(ZoneId.of(UTC.toString())).toInstant();
-    return updatedInstant;
-  }
-
-  /**
    * Converts {@link Partitioning} to {@link ChronoUnit}.
    */
-  public static TemporalUnit partitioningToTemporalUnit(Partitioning partitioning) {
+  private static TemporalUnit partitioningToTemporalUnit(Partitioning partitioning) {
     if (partitioning.equals(HOURS)) {
       return ChronoUnit.HOURS;
     } else if (partitioning.equals(DAYS)) {
@@ -137,29 +129,37 @@ public final class ParameterUtil {
   }
 
   /**
-   * Truncates an instant based on partitioning, e.g. '2016-10-10T15:22:111' and partitioning HOURS,
-   * the result would be '2016-10-10T15:00:000'.
+   * Gets the last execution instant for a {@link Partitioning}, relative to a given instant.
+   *
+   * <p>e.g. an hourly partitioning has a last execution instant at 13:00 relative to 13:22.
+   *
+   * @param instant      The instant to calculate the last execution instant relative to
+   * @param partitioning The partitioning of executions
+   * @return an instant at the last execution time
    */
-  public static Instant truncateInstant(Instant instant, Partitioning partitioning) {
-    if (partitioning.equals(HOURS)) {
-      return instant.truncatedTo(ChronoUnit.HOURS);
+  public static Instant lastInstant(Instant instant, Partitioning partitioning) {
+    final ExecutionTime executionTime = ExecutionTime.forCron(partitioning.cron());
+    final ZonedDateTime utcDateTime = instant.atZone(UTC);
+    final ZonedDateTime lastDateTime = executionTime.lastExecution(utcDateTime);
 
-    } else if (partitioning.equals(DAYS)) {
-      return instant.truncatedTo(ChronoUnit.DAYS);
+    return lastDateTime.toInstant();
+  }
 
-    } else if (partitioning.equals(WEEKS)) {
-      LocalDateTime dateTime = LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
-      int daysToSubtract = dateTime.getDayOfWeek().getValue();
-      dateTime = dateTime.minusDays(daysToSubtract - 1);
-      Instant resultInstant = dateTime.toInstant(ZoneOffset.UTC);
-      return resultInstant.truncatedTo(ChronoUnit.DAYS);
+  /**
+   * Gets the next execution instant for a {@link Partitioning}, relative to a given instant.
+   *
+   * <p>e.g. an hourly partitioning has a next execution instant at 14:00 relative to 13:22.
+   *
+   * @param instant      The instant to calculate the next execution instant relative to
+   * @param partitioning The partitioning of executions
+   * @return an instant at the next execution time
+   */
+  public static Instant nextInstant(Instant instant, Partitioning partitioning) {
+    final ExecutionTime executionTime = ExecutionTime.forCron(partitioning.cron());
+    final ZonedDateTime utcDateTime = instant.atZone(UTC);
+    final ZonedDateTime nextDateTime = executionTime.nextExecution(utcDateTime);
 
-    } else if (partitioning.equals(MONTHS)) {
-      ZonedDateTime truncatedToMonth = instant.atZone(ZoneOffset.UTC).truncatedTo(ChronoUnit.DAYS).withDayOfMonth(1);
-      return truncatedToMonth.toInstant();
-    } else {
-      throw new IllegalArgumentException("Partitioning not supported: " + partitioning);
-    }
+    return nextDateTime.toInstant();
   }
 
   public static Either<String, Instant> instantFromWorkflowInstance(

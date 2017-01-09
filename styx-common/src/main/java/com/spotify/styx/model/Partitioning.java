@@ -20,6 +20,12 @@
 
 package com.spotify.styx.model;
 
+import static com.cronutils.model.definition.CronDefinitionBuilder.instanceDefinitionFor;
+
+import com.cronutils.model.Cron;
+import com.cronutils.model.CronType;
+import com.cronutils.model.definition.CronDefinition;
+import com.cronutils.parser.CronParser;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.auto.value.AutoValue;
@@ -44,6 +50,7 @@ public abstract class Partitioning {
   public static final Partitioning YEARS = create(YEARLY_CRON);
 
   public abstract String expression();
+  public abstract Cron cron();
 
   @Override
   public String toString() {
@@ -102,7 +109,10 @@ public abstract class Partitioning {
   }
 
   private static Partitioning create(String cronExpression) {
-    return new AutoValue_Partitioning(cronExpression);
+    final CronDefinition cronDefinition = instanceDefinitionFor(CronType.UNIX);
+    final Cron cron = new CronParser(cronDefinition).parse(cronExpression);
+
+    return new AutoValue_Partitioning(cronExpression, cron);
   }
 
   // todo: remove
