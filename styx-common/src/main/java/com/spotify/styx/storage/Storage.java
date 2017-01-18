@@ -20,6 +20,7 @@
 
 package com.spotify.styx.storage;
 
+import com.spotify.styx.model.Backfill;
 import com.spotify.styx.model.Resource;
 import com.spotify.styx.model.SequenceEvent;
 import com.spotify.styx.model.Workflow;
@@ -244,4 +245,14 @@ public interface Storage {
   List<Resource> resources() throws IOException;
 
   void deleteResource(String id) throws IOException;
+
+  List<Backfill> backfills() throws IOException;
+
+  List<Backfill> backfillsForIds(String... ids) throws IOException;
+
+  Optional<Backfill> backfill(String id) throws IOException;
+
+  void storeBackfill(Backfill backfill) throws IOException;
+
+  void deleteBackfill(String id) throws IOException;
 }

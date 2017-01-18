@@ -30,7 +30,7 @@ import com.spotify.styx.state.RunState;
 import com.spotify.styx.state.StateManager;
 import com.spotify.styx.state.Trigger;
 import com.spotify.styx.storage.Storage;
-import com.spotify.styx.workflow.ParameterUtil;
+import com.spotify.styx.util.ParameterUtil;
 import java.time.Instant;
 import java.util.Objects;
 import org.slf4j.Logger;

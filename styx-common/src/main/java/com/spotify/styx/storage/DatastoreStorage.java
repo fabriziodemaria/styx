@@ -38,6 +38,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.spotify.styx.model.Backfill;
+import com.spotify.styx.model.Partitioning;
 import com.spotify.styx.model.Resource;
 import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowId;
@@ -49,12 +51,15 @@ import com.spotify.styx.util.ResourceNotFoundException;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,6 +75,7 @@ class DatastoreStorage {
   public static final String KIND_WORKFLOW = "Workflow";
   public static final String KIND_ACTIVE_WORKFLOW_INSTANCE = "ActiveWorkflowInstance";
   public static final String KIND_RESOURCE = "Resource";
+  public static final String KIND_BACKFILL = "Backfill";
 
   public static final String PROPERTY_CONFIG_ENABLED = "enabled";
   public static final String PROPERTY_CONFIG_DOCKER_RUNNER_ID = "dockerRunnerId";
@@ -83,6 +89,12 @@ class DatastoreStorage {
   public static final String PROPERTY_PARAMETER = "parameter";
   public static final String PROPERTY_COMMIT_SHA = "commitSha";
   public static final String PROPERTY_CONCURRENCY = "concurrency";
+  public static final String PROPERTY_START = "start";
+  public static final String PROPERTY_END = "end";
+  public static final String PROPERTY_RESOURCE = "resource";
+  public static final String PROPERTY_NEXT_TRIGGER = "nextTrigger";
+  public static final String PROPERTY_PARTITIONING = "partitioning";
+  public static final String PROPERTY_COMPLETED = "completed";
 
   public static final String KEY_GLOBAL_CONFIG = "styxGlobal";
 
@@ -518,6 +530,81 @@ class DatastoreStorage {
 
   void deleteResource(String id) throws IOException {
     final Key key = datastore.newKeyFactory().kind(KIND_RESOURCE).newKey(id);
+    storeWithRetries(() -> {
+      datastore.delete(key);
+      return null;
+    });
+  }
+
+  Optional<Backfill> getBackfill(String id) {
+    Entity entity = datastore.get(datastore.newKeyFactory().kind(KIND_BACKFILL).newKey(id));
+    if (entity == null) {
+      return Optional.empty();
+    }
+    return Optional.of(entityToBackfill(entity));
+  }
+
+  List<Backfill> getBackfills() {
+    final EntityQuery query = Query.entityQueryBuilder().kind(KIND_BACKFILL).build();
+    final QueryResults<Entity> results = datastore.run(query);
+    final ImmutableList.Builder<Backfill> resources = ImmutableList.builder();
+    while (results.hasNext()) {
+      resources.add(entityToBackfill(results.next()));
+    }
+    return resources.build();
+  }
+
+  List<Backfill> getBackfills(String[] ids) {
+    final KeyFactory keyFactory = datastore.newKeyFactory().kind(KIND_BACKFILL);
+    final List<Key> keys = Arrays.stream(ids).map(keyFactory::newKey).collect(Collectors.toList());
+    final Iterator<Entity> results = datastore.get(keys);
+    final ImmutableList.Builder<Backfill> resources = ImmutableList.builder();
+    while (results.hasNext()) {
+      resources.add(entityToBackfill(results.next()));
+    }
+    return resources.build();
+  }
+
+  private Backfill entityToBackfill(Entity entity) {
+    final WorkflowId workflowId = WorkflowId.create(entity.getString(PROPERTY_COMPONENT),
+                                                    entity.getString(PROPERTY_WORKFLOW));
+
+    return Backfill.newBuilder()
+        .id(entity.key().name())
+        .start(datetimeToInstant(entity.getDateTime(PROPERTY_START)))
+        .end(datetimeToInstant(entity.getDateTime(PROPERTY_END)))
+        .workflowId(workflowId)
+        .concurrency((int) entity.getLong(PROPERTY_CONCURRENCY))
+        .resource(entity.getString(PROPERTY_RESOURCE))
+        .nextTrigger(datetimeToInstant(entity.getDateTime(PROPERTY_NEXT_TRIGGER)))
+        .partitioning(Partitioning.valueOf(entity.getString(PROPERTY_PARTITIONING)))
+        .completed(entity.getBoolean(PROPERTY_COMPLETED))
+        .build();
+  }
+
+  void storeBackfill(Backfill backfill) throws IOException {
+    storeWithRetries(() -> datastore.put(backfillToEntity(backfill)));
+  }
+
+  private Entity backfillToEntity(Backfill backfill) {
+    final Key key = datastore.newKeyFactory().kind(KIND_BACKFILL).newKey(backfill.id());
+
+    Entity.Builder builder = Entity.builder(key)
+        .set(PROPERTY_CONCURRENCY, backfill.concurrency())
+        .set(PROPERTY_START, instantToDatetime(backfill.start()))
+        .set(PROPERTY_END, instantToDatetime(backfill.end()))
+        .set(PROPERTY_COMPONENT, backfill.workflowId().componentId())
+        .set(PROPERTY_WORKFLOW, backfill.workflowId().endpointId())
+        .set(PROPERTY_RESOURCE, backfill.resource())
+        .set(PROPERTY_PARTITIONING, backfill.partitioning().name())
+        .set(PROPERTY_NEXT_TRIGGER, instantToDatetime(backfill.nextTrigger()))
+        .set(PROPERTY_COMPLETED, backfill.completed());
+
+    return builder.build();
+  }
+
+  void deleteBackfill(String id) throws IOException {
+    final Key key = datastore.newKeyFactory().kind(KIND_BACKFILL).newKey(id);
     storeWithRetries(() -> {
       datastore.delete(key);
       return null;
