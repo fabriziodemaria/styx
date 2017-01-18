@@ -24,10 +24,11 @@ import static com.github.npathai.hamcrestopt.OptionalMatchers.hasValue;
 import static com.spotify.apollo.test.unit.ResponseMatchers.hasStatus;
 import static com.spotify.apollo.test.unit.StatusTypeMatchers.belongsToFamily;
 import static com.spotify.styx.api.JsonMatchers.assertJson;
-import static junit.framework.TestCase.assertTrue;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
 import com.google.cloud.datastore.Datastore;
@@ -151,8 +152,8 @@ public class BackfillResourceTest extends VersionedApiTest {
   public void shouldUseGeneratedValuesWhenPosting() throws Exception {
     sinceVersion(Api.Version.V1);
 
-    String jsonWithMissingValues =
-        "{\"start\":\"2017-01-01T00:00:00Z\",\"end\":\"2017-01-02T00:00:00Z\",\"component\":\"component\",\"workflow\":\"workflow1\",\"concurrency\":1}";
+    Backfill backfill = Backfill.create(null, BACKFILL_1.start(), BACKFILL_1.end(), "component", "workflow", 10, Optional.empty(), null, null);
+    String jsonWithMissingValues = Json.OBJECT_MAPPER.writeValueAsString(backfill);
 
     Response<ByteString> response =
         awaitResponse(serviceHelper.request("POST", path(""),
@@ -163,6 +164,7 @@ public class BackfillResourceTest extends VersionedApiTest {
         response.payload().get().toByteArray(), Backfill.class);
 
     assertTrue(postedBackfill.id().matches("backfill-[\\d-]+"));
+    assertFalse(postedBackfill.dockerImage().isPresent());
   }
 
   @Test
