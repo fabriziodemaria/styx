@@ -67,6 +67,7 @@ public final class Main {
   private static final int TTL_REQUEST = 90;
 
   private static final String COMMAND_DEST = "command";
+  private static final String SUBCOMMAND_DEST = "subcommand";
   private static final String COMPONENT_DEST = "component";
   private static final String WORKFLOW_DEST = "workflow";
   private static final String PARAMETER_DEST = "parameter";
@@ -131,6 +132,7 @@ public final class Main {
   }
 
   private void run() throws IOException, InterruptedException {
+    System.out.println("namespace.getAttrs() = " + namespace.getAttrs());
     final Command command = namespace.get(COMMAND_DEST);
 
     try (Service.Instance instance = cliService.start()) {
@@ -158,6 +160,9 @@ public final class Main {
 
         case RETRY:
           retryWorkflowInstance();
+          break;
+
+        case BACKFILL:
           break;
 
         default:
@@ -328,9 +333,35 @@ public final class Main {
         .description("Styx CLI")
         .version("Styx CLI " + Main.class.getPackage().getImplementationVersion());
 
-    final Subparsers subCommands = parser.addSubparsers()
-        .title("commands")
-        .metavar(" ");
+    final Subparsers subCommands = parser.addSubparsers().title("commands").metavar(" ");
+
+    final Subparsers backfillCommands =
+        Command.BACKFILL.parser(subCommands)
+            .addSubparsers().title("commands").metavar(" ");
+
+    final Subparser backfillShow = backfillCommands.addParser("show").setDefault(SUBCOMMAND_DEST, "show");
+    final Argument backfillShowId =
+        backfillShow.addArgument("backfill").help("Backfill ID");
+
+    final Subparser backfillCreate = backfillCommands.addParser("create").setDefault(SUBCOMMAND_DEST, "create");
+    final Argument backfillCreateDockerImage =
+        backfillCreate.addArgument("--docker-image")
+            .help("Use a specific docker image for this backfill");
+    final Argument backfillCreateForce =
+        backfillCreate.addArgument("--force-halt")
+            .setDefault(false)
+            .action(Arguments.storeTrue())
+            .help("Halt any active workflow instances in backfill range");
+    final Argument backfillCreateComponent =
+        backfillCreate.addArgument(COMPONENT_DEST).help("Component ID");
+    final Argument backfillCreateWorkflow =
+        backfillCreate.addArgument(WORKFLOW_DEST).help("Workflow ID");
+    final Argument backfillCreateStart =
+        backfillCreate.addArgument("start").help("Start date/datetime (inclusive)");
+    final Argument backfillCreateEnd =
+        backfillCreate.addArgument("end").help("End date/datetime (exclusive)");
+    final Argument backfillCreateConcurrency =
+        backfillCreate.addArgument("concurrency").help("The number of jobs to run in parallel");
 
     final Subparser list = Command.LIST.parser(subCommands);
     final Argument listComponent = list.addArgument("-c", "--component")
@@ -369,7 +400,8 @@ public final class Main {
     EVENTS("e", "List events for a workflow instance"),
     HALT("h", "Halt a workflow instance"),
     TRIGGER("t", "Trigger a completed workflow instance"),
-    RETRY("r", "Retry a workflow instance that is in a waiting state");
+    RETRY("r", "Retry a workflow instance that is in a waiting state"),
+    BACKFILL(null, "Commands related to backfills");
 
     private final String alias;
     private final String description;
@@ -380,12 +412,16 @@ public final class Main {
     }
 
     public Subparser parser(Subparsers subCommands) {
-      return subCommands
+      Subparser subparser = subCommands
           .addParser(name().toLowerCase())
-          .aliases(alias)
           .setDefault(COMMAND_DEST, this)
           .description(description)
           .help(description);
+
+      if (alias != null && !alias.isEmpty())
+        subparser.aliases(alias);
+
+      return subparser;
     }
   }
 }

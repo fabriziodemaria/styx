@@ -20,6 +20,7 @@
 
 package com.spotify.styx.monitoring;
 
+import com.spotify.styx.model.Backfill;
 import com.spotify.styx.model.Resource;
 import com.spotify.styx.model.SequenceEvent;
 import com.spotify.styx.model.Workflow;
@@ -186,5 +187,20 @@ public final class MeteredStorage extends MeteredBase implements Storage {
   @Override
   public void deleteResource(String id) throws IOException {
     timedStorage("deleteResource", () -> delegate.deleteResource(id));
+  }
+
+  @Override
+  public List<Backfill> backfills() throws IOException {
+    return timedStorage("backfills", delegate::backfills);
+  }
+
+  @Override
+  public Optional<Backfill> backfill(String id) throws IOException {
+    return timedStorage("backfill", () -> delegate.backfill(id));
+  }
+
+  @Override
+  public void storeBackfill(Backfill backfill) throws IOException {
+    timedStorage("storeBackfill", () -> delegate.storeBackfill(backfill));
   }
 }
