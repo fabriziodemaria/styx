@@ -418,8 +418,9 @@ public final class Main {
           .description(description)
           .help(description);
 
-      if (alias != null && !alias.isEmpty())
+      if (alias != null && !alias.isEmpty()) {
         subparser.aliases(alias);
+      }
 
       return subparser;
     }
