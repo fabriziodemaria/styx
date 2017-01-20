@@ -18,11 +18,13 @@
  * -/-/-
  */
 
-package com.spotify.styx.model;
+package com.spotify.styx.model.data;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.auto.value.AutoValue;
+import com.spotify.styx.model.SequenceEvent;
+import com.spotify.styx.model.WorkflowInstance;
 import java.util.Comparator;
 import java.util.List;
 
@@ -39,12 +41,12 @@ public abstract class WorkflowInstanceExecutionData {
   public abstract WorkflowInstance workflowInstance();
 
   @JsonProperty
-  public abstract List<Trigger> triggers();
+  public abstract List<TriggerData> triggers();
 
   @JsonCreator
   public static WorkflowInstanceExecutionData create(
       @JsonProperty("workflow_instance") WorkflowInstance workflowInstance,
-      @JsonProperty("triggers") List<Trigger> triggers) {
+      @JsonProperty("triggers") List<TriggerData> triggers) {
     return new AutoValue_WorkflowInstanceExecutionData(workflowInstance, triggers);
   }
 

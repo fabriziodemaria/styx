@@ -18,13 +18,16 @@
  * -/-/-
  */
 
-package com.spotify.styx.model;
+package com.spotify.styx.model.data;
 
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
 import com.spotify.styx.WorkflowInstanceEventFactory;
+import com.spotify.styx.model.ExecutionDescription;
+import com.spotify.styx.model.SequenceEvent;
+import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.state.RunState;
 import com.spotify.styx.util.EventUtil;
 import com.spotify.styx.util.Time;
@@ -61,7 +64,7 @@ public class WFIExecutionBuilderTest {
         WorkflowInstanceExecutionData.create(
             WORKFLOW_INSTANCE,
             Collections.singletonList(
-                Trigger.create(
+                TriggerData.create(
                     "trig-0",
                     time("07:55"),
                     true,
@@ -113,51 +116,51 @@ public class WFIExecutionBuilderTest {
         WorkflowInstanceExecutionData.create(
             WORKFLOW_INSTANCE,
             Arrays.asList(
-                Trigger.create(
+                TriggerData.create(
                     "trig-0",
                     time("07:55"),
                     true,
                     Arrays.asList(
-                        Execution.create(
+                        ExecutionData.create(
                             "exec-id-00",
                             "img1",
                             Arrays.asList(
-                                ExecStatus.create(time("07:56"), "SUBMITTED"),
-                                ExecStatus.create(time("07:57"), "STARTED"),
-                                ExecStatus.create(time("07:58"), "MISSING_DEPS")
+                                ExecStatusData.create(time("07:56"), "SUBMITTED"),
+                                ExecStatusData.create(time("07:57"), "STARTED"),
+                                ExecStatusData.create(time("07:58"), "MISSING_DEPS")
                             )
                         ),
-                        Execution.create(
+                        ExecutionData.create(
                             "exec-id-01",
                             "img2",
                             Arrays.asList(
-                                ExecStatus.create(time("08:56"), "SUBMITTED"),
-                                ExecStatus.create(time("08:57"), "STARTED"),
-                                ExecStatus.create(time("08:58"), "SUCCESS")
+                                ExecStatusData.create(time("08:56"), "SUBMITTED"),
+                                ExecStatusData.create(time("08:57"), "STARTED"),
+                                ExecStatusData.create(time("08:58"), "SUCCESS")
                             )
                         )
                     )
                 ),
-                Trigger.create(
+                TriggerData.create(
                     "trig-1",
                     time("09:55"),
                     false,
                     Arrays.asList(
-                        Execution.create(
+                        ExecutionData.create(
                             "exec-id-10",
                             "img3",
                             Arrays.asList(
-                                ExecStatus.create(time("09:56"), "SUBMITTED"),
-                                ExecStatus.create(time("09:57"), "STARTED"),
-                                ExecStatus.create(time("09:58"), "FAILED")
+                                ExecStatusData.create(time("09:56"), "SUBMITTED"),
+                                ExecStatusData.create(time("09:57"), "STARTED"),
+                                ExecStatusData.create(time("09:58"), "FAILED")
                             )
                         ),
-                        Execution.create(
+                        ExecutionData.create(
                             "exec-id-11",
                             "img4",
                             Arrays.asList(
-                                ExecStatus.create(time("10:56"), "SUBMITTED"),
-                                ExecStatus.create(time("10:57"), "STARTED")
+                                ExecStatusData.create(time("10:56"), "SUBMITTED"),
+                                ExecStatusData.create(time("10:57"), "STARTED")
                             )
                         )
                     )
@@ -193,26 +196,26 @@ public class WFIExecutionBuilderTest {
         WorkflowInstanceExecutionData.create(
             WORKFLOW_INSTANCE,
             Collections.singletonList(
-                Trigger.create(
+                TriggerData.create(
                     "trig-0",
                     time("07:55"),
                     false,
                     Arrays.asList(
-                        Execution.create(
+                        ExecutionData.create(
                             "exec-id-00",
                             "img1",
                             Arrays.asList(
-                                ExecStatus.create(time("07:56"), "SUBMITTED"),
-                                ExecStatus.create(time("07:57"), "STARTED"),
-                                ExecStatus.create(time("07:58"), "TIMEOUT")
+                                ExecStatusData.create(time("07:56"), "SUBMITTED"),
+                                ExecStatusData.create(time("07:57"), "STARTED"),
+                                ExecStatusData.create(time("07:58"), "TIMEOUT")
                             )
                         ),
-                        Execution.create(
+                        ExecutionData.create(
                             "exec-id-01",
                             "img2",
                             Arrays.asList(
-                                ExecStatus.create(time("08:56"), "SUBMITTED"),
-                                ExecStatus.create(time("08:57"), "STARTED")
+                                ExecStatusData.create(time("08:56"), "SUBMITTED"),
+                                ExecStatusData.create(time("08:57"), "STARTED")
                             )
                         )
                     )
@@ -248,26 +251,26 @@ public class WFIExecutionBuilderTest {
         WorkflowInstanceExecutionData.create(
             WORKFLOW_INSTANCE,
             Collections.singletonList(
-                Trigger.create(
+                TriggerData.create(
                     "trig-0",
                     time("07:55"),
                     false,
                     Arrays.asList(
-                        Execution.create(
+                        ExecutionData.create(
                             "exec-id-00",
                             "img1",
                             Arrays.asList(
-                                ExecStatus.create(time("07:56"), "SUBMITTED"),
-                                ExecStatus.create(time("07:57"), "STARTED"),
-                                ExecStatus.create(time("07:58"), "Something failed")
+                                ExecStatusData.create(time("07:56"), "SUBMITTED"),
+                                ExecStatusData.create(time("07:57"), "STARTED"),
+                                ExecStatusData.create(time("07:58"), "Something failed")
                             )
                         ),
-                        Execution.create(
+                        ExecutionData.create(
                             "exec-id-01",
                             "img2",
                             Arrays.asList(
-                                ExecStatus.create(time("08:56"), "SUBMITTED"),
-                                ExecStatus.create(time("08:57"), "STARTED")
+                                ExecStatusData.create(time("08:56"), "SUBMITTED"),
+                                ExecStatusData.create(time("08:57"), "STARTED")
                             )
                         )
                     )
@@ -302,32 +305,32 @@ public class WFIExecutionBuilderTest {
         WorkflowInstanceExecutionData.create(
             WORKFLOW_INSTANCE,
             Arrays.asList(
-                Trigger.create(
+                TriggerData.create(
                     "trig-0",
                     time("07:55"),
                     true,
                     Collections.singletonList(
-                        Execution.create(
+                        ExecutionData.create(
                             "exec-id-00",
                             "img1",
                             Arrays.asList(
-                                ExecStatus.create(time("07:56"), "SUBMITTED"),
-                                ExecStatus.create(time("07:57"), "HALTED")
+                                ExecStatusData.create(time("07:56"), "SUBMITTED"),
+                                ExecStatusData.create(time("07:57"), "HALTED")
                             )
                         )
                     )
                 ),
-                Trigger.create(
+                TriggerData.create(
                     "trig-1",
                     time("08:56"),
                     false,
                     Collections.singletonList(
-                        Execution.create(
+                        ExecutionData.create(
                             "exec-id-10",
                             "img2",
                             Arrays.asList(
-                                ExecStatus.create(time("08:56"), "SUBMITTED"),
-                                ExecStatus.create(time("08:57"), "STARTED")
+                                ExecStatusData.create(time("08:56"), "SUBMITTED"),
+                                ExecStatusData.create(time("08:57"), "STARTED")
                             )
                         )
                     )

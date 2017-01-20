@@ -18,30 +18,38 @@
  * -/-/-
  */
 
-package com.spotify.styx.model;
+package com.spotify.styx.model.data;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.auto.value.AutoValue;
 import java.time.Instant;
+import java.util.List;
 
 /**
- * Value representing an execution status change
+ * Value representing a {@link com.spotify.styx.model.WorkflowInstance} trigger
  */
 @AutoValue
-public abstract class ExecStatus {
+public abstract class TriggerData {
 
-  @JsonProperty("timestamp")
+  @JsonProperty
+  public abstract String triggerId();
+
+  @JsonProperty
   public abstract Instant timestamp();
 
-  @JsonProperty("status")
-  public abstract String status();
+  @JsonProperty
+  public abstract boolean complete();
+
+  @JsonProperty
+  public abstract List<ExecutionData> executions();
 
   @JsonCreator
-  public static ExecStatus create(
+  public static TriggerData create(
+      @JsonProperty("trigger_id") String triggerId,
       @JsonProperty("timestamp") Instant timestamp,
-      @JsonProperty("status") String status
-  ) {
-    return new AutoValue_ExecStatus(timestamp, status);
+      @JsonProperty("complete") boolean complete,
+      @JsonProperty("executions") List<ExecutionData> executions) {
+    return new AutoValue_TriggerData(triggerId, timestamp, complete, executions);
   }
 }

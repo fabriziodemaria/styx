@@ -18,7 +18,7 @@
  * -/-/-
  */
 
-package com.spotify.styx.model;
+package com.spotify.styx.model.data;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -29,7 +29,7 @@ import java.util.List;
  * Value representing an execution attempt
  */
 @AutoValue
-public abstract class Execution {
+public abstract class ExecutionData {
 
   @JsonProperty
   public abstract String executionId();
@@ -38,13 +38,13 @@ public abstract class Execution {
   public abstract String dockerImage();
 
   @JsonProperty
-  public abstract List<ExecStatus> statuses();
+  public abstract List<ExecStatusData> statuses();
 
   @JsonCreator
-  public static Execution create(
+  public static ExecutionData create(
       @JsonProperty("execution_id") String executionId,
       @JsonProperty("docker_image") String dockerImage,
-      @JsonProperty("statuses") List<ExecStatus> statuses) {
-    return new AutoValue_Execution(executionId, dockerImage, statuses);
+      @JsonProperty("statuses") List<ExecStatusData> statuses) {
+    return new AutoValue_ExecutionData(executionId, dockerImage, statuses);
   }
 }
