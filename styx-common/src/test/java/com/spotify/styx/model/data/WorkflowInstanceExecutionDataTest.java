@@ -18,12 +18,13 @@
  * -/-/-
  */
 
-package com.spotify.styx.model;
+package com.spotify.styx.model.data;
 
 import static com.spotify.styx.util.Json.OBJECT_MAPPER;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 
+import com.spotify.styx.model.WorkflowInstance;
 import java.time.Instant;
 import java.util.Arrays;
 import org.junit.Test;
@@ -33,7 +34,7 @@ public class WorkflowInstanceExecutionDataTest {
   @Test
   public void shouldDeserializeExecStatus() throws Exception {
     String json = statusJson("09:56", "STARTED");
-    ExecStatus executionStatus = OBJECT_MAPPER.readValue(json, ExecStatus.class);
+    ExecStatusData executionStatus = OBJECT_MAPPER.readValue(json, ExecStatusData.class);
 
     assertThat(executionStatus.timestamp(), is(Instant.parse("2016-08-03T09:56:03.607Z")));
     assertThat(executionStatus.status(), is("STARTED"));
@@ -43,17 +44,17 @@ public class WorkflowInstanceExecutionDataTest {
   public void shouldDeserializeExecution() throws Exception {
     String json = executionJson("exec-id", "busybox:1.0", "09", "SUCCESS");
 
-    Execution execution = OBJECT_MAPPER.readValue(json, Execution.class);
-    Execution expected = Execution.create(
+    ExecutionData executionData = OBJECT_MAPPER.readValue(json, ExecutionData.class);
+    ExecutionData expected = ExecutionData.create(
         "exec-id",
         "busybox:1.0",
         Arrays.asList(
-            ExecStatus.create(Instant.parse("2016-08-03T09:56:03.607Z"), "STARTED"),
-            ExecStatus.create(Instant.parse("2016-08-03T09:57:03.607Z"), "RUNNING"),
-            ExecStatus.create(Instant.parse("2016-08-03T09:58:03.607Z"), "SUCCESS")
+            ExecStatusData.create(Instant.parse("2016-08-03T09:56:03.607Z"), "STARTED"),
+            ExecStatusData.create(Instant.parse("2016-08-03T09:57:03.607Z"), "RUNNING"),
+            ExecStatusData.create(Instant.parse("2016-08-03T09:58:03.607Z"), "SUCCESS")
         )
     );
-    assertThat(execution, is(expected));
+    assertThat(executionData, is(expected));
   }
 
   @Test
@@ -70,33 +71,33 @@ public class WorkflowInstanceExecutionDataTest {
         + jsonExec0 + "," + jsonExec1
         + "]}";
 
-    Trigger trigger = OBJECT_MAPPER.readValue(json, Trigger.class);
-    Trigger expected = Trigger.create(
+    TriggerData triggerData = OBJECT_MAPPER.readValue(json, TriggerData.class);
+    TriggerData expected = TriggerData.create(
         "trig-0",
         time("07:55"),
         true,
         Arrays.asList(
-            Execution.create(
+            ExecutionData.create(
                 "exec-id-0",
                 "busybox:1.0",
                 Arrays.asList(
-                    ExecStatus.create(Instant.parse("2016-08-03T09:56:03.607Z"), "STARTED"),
-                    ExecStatus.create(Instant.parse("2016-08-03T09:57:03.607Z"), "RUNNING"),
-                    ExecStatus.create(Instant.parse("2016-08-03T09:58:03.607Z"), "FAILED")
+                    ExecStatusData.create(Instant.parse("2016-08-03T09:56:03.607Z"), "STARTED"),
+                    ExecStatusData.create(Instant.parse("2016-08-03T09:57:03.607Z"), "RUNNING"),
+                    ExecStatusData.create(Instant.parse("2016-08-03T09:58:03.607Z"), "FAILED")
                 )
             ),
-            Execution.create(
+            ExecutionData.create(
                 "exec-id-1",
                 "busybox:1.1",
                 Arrays.asList(
-                    ExecStatus.create(Instant.parse("2016-08-03T10:56:03.607Z"), "STARTED"),
-                    ExecStatus.create(Instant.parse("2016-08-03T10:57:03.607Z"), "RUNNING"),
-                    ExecStatus.create(Instant.parse("2016-08-03T10:58:03.607Z"), "SUCCESS")
+                    ExecStatusData.create(Instant.parse("2016-08-03T10:56:03.607Z"), "STARTED"),
+                    ExecStatusData.create(Instant.parse("2016-08-03T10:57:03.607Z"), "RUNNING"),
+                    ExecStatusData.create(Instant.parse("2016-08-03T10:58:03.607Z"), "SUCCESS")
                 )
             )
         )
     );
-    assertThat(trigger, is(expected));
+    assertThat(triggerData, is(expected));
   }
 
   @Test
@@ -142,52 +143,64 @@ public class WorkflowInstanceExecutionDataTest {
     WorkflowInstanceExecutionData expected = WorkflowInstanceExecutionData.create(
         WorkflowInstance.parseKey("component1#endpoint1#2016-08-03T06"),
         Arrays.asList(
-            Trigger.create(
+            TriggerData.create(
                 "trig-0",
                 time("07:55"),
                 true,
                 Arrays.asList(
-                    Execution.create(
+                    ExecutionData.create(
                         "exec-id-00",
                         "busybox:1.0",
                         Arrays.asList(
-                            ExecStatus.create(Instant.parse("2016-08-03T07:56:03.607Z"), "STARTED"),
-                            ExecStatus.create(Instant.parse("2016-08-03T07:57:03.607Z"), "RUNNING"),
-                            ExecStatus.create(Instant.parse("2016-08-03T07:58:03.607Z"), "FAILED")
+                            ExecStatusData
+                                .create(Instant.parse("2016-08-03T07:56:03.607Z"), "STARTED"),
+                            ExecStatusData
+                                .create(Instant.parse("2016-08-03T07:57:03.607Z"), "RUNNING"),
+                            ExecStatusData
+                                .create(Instant.parse("2016-08-03T07:58:03.607Z"), "FAILED")
                         )
                     ),
-                    Execution.create(
+                    ExecutionData.create(
                         "exec-id-01",
                         "busybox:1.1",
                         Arrays.asList(
-                            ExecStatus.create(Instant.parse("2016-08-03T08:56:03.607Z"), "STARTED"),
-                            ExecStatus.create(Instant.parse("2016-08-03T08:57:03.607Z"), "RUNNING"),
-                            ExecStatus.create(Instant.parse("2016-08-03T08:58:03.607Z"), "SUCCESS")
+                            ExecStatusData
+                                .create(Instant.parse("2016-08-03T08:56:03.607Z"), "STARTED"),
+                            ExecStatusData
+                                .create(Instant.parse("2016-08-03T08:57:03.607Z"), "RUNNING"),
+                            ExecStatusData
+                                .create(Instant.parse("2016-08-03T08:58:03.607Z"), "SUCCESS")
                         )
                     )
                 )
             ),
-            Trigger.create(
+            TriggerData.create(
                 "trig-1",
                 time("09:55"),
                 false,
                 Arrays.asList(
-                    Execution.create(
+                    ExecutionData.create(
                         "exec-id-10",
                         "busybox:1.2",
                         Arrays.asList(
-                            ExecStatus.create(Instant.parse("2016-08-03T09:56:03.607Z"), "STARTED"),
-                            ExecStatus.create(Instant.parse("2016-08-03T09:57:03.607Z"), "RUNNING"),
-                            ExecStatus.create(Instant.parse("2016-08-03T09:58:03.607Z"), "FAILED")
+                            ExecStatusData
+                                .create(Instant.parse("2016-08-03T09:56:03.607Z"), "STARTED"),
+                            ExecStatusData
+                                .create(Instant.parse("2016-08-03T09:57:03.607Z"), "RUNNING"),
+                            ExecStatusData
+                                .create(Instant.parse("2016-08-03T09:58:03.607Z"), "FAILED")
                         )
                     ),
-                    Execution.create(
+                    ExecutionData.create(
                         "exec-id-11",
                         "busybox:1.3",
                         Arrays.asList(
-                            ExecStatus.create(Instant.parse("2016-08-03T10:56:03.607Z"), "STARTED"),
-                            ExecStatus.create(Instant.parse("2016-08-03T10:57:03.607Z"), "RUNNING"),
-                            ExecStatus.create(Instant.parse("2016-08-03T10:58:03.607Z"), "SUCCESS")
+                            ExecStatusData
+                                .create(Instant.parse("2016-08-03T10:56:03.607Z"), "STARTED"),
+                            ExecStatusData
+                                .create(Instant.parse("2016-08-03T10:57:03.607Z"), "RUNNING"),
+                            ExecStatusData
+                                .create(Instant.parse("2016-08-03T10:58:03.607Z"), "SUCCESS")
                         )
                     )
                 )
