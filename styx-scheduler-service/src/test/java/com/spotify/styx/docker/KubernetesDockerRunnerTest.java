@@ -119,7 +119,7 @@ public class KubernetesDockerRunnerTest {
     createdPod.getMetadata().setName(POD_NAME);
     createdPod.getMetadata().setResourceVersion("1001");
 
-    StateData stateData = StateData.newBuilder().executionId(POD_NAME).build();
+    StateData stateData = StateData.builder().executionId(POD_NAME).build();
     stateManager.initialize(RunState.create(WORKFLOW_INSTANCE, RunState.State.SUBMITTED, stateData));
 
     when(pods.create(any(Pod.class))).thenReturn(createdPod);
@@ -200,7 +200,7 @@ public class KubernetesDockerRunnerTest {
 
   @Test
   public void shouldGenerateStartedWhenContainerIsReady() throws Exception {
-    StateData stateData = StateData.newBuilder().executionId(POD_NAME).build();
+    StateData stateData = StateData.builder().executionId(POD_NAME).build();
     stateManager.initialize(RunState.create(WORKFLOW_INSTANCE, RunState.State.SUBMITTED, stateData));
 
     createdPod.setStatus(running(/* ready= */ false));

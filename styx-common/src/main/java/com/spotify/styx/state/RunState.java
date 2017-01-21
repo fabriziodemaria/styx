@@ -40,6 +40,7 @@ import com.spotify.styx.model.ExecutionDescription;
 import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.util.Time;
 import java.time.Instant;
+import java.util.Optional;
 
 /**
  * State machine for run states.
@@ -48,7 +49,7 @@ import java.time.Instant;
  * defined by the {@link Event} enum and outputs defined by the methods of {@link OutputHandler}.
  */
 @AutoValue
-public abstract class RunState {
+public abstract class  RunState {
 
   public static final int SUCCESS_EXIT_CODE = 0;
   public static final int MISSING_DEPS_EXIT_CODE = 20;
@@ -140,8 +141,9 @@ public abstract class RunState {
         case NEW:
           return state( // for backwards compatibility
               SUBMITTED,
-              data().builder()
-                  .triggerId("UNKNOWN")
+              data().toBuilder()
+                  .trigger("UNKNOWN")
+//                  .trigger(Trigger.natural("UNKNOWN"))
                   .build());
 
         default:
@@ -155,8 +157,9 @@ public abstract class RunState {
         case NEW:
           return state(
               QUEUED,
-              data().builder()
-                  .triggerId(triggerId)
+              data().toBuilder()
+                  .trigger(triggerId)
+//                  .trigger(Trigger.natural(triggerId))
                   .build());
 
         default:
@@ -172,7 +175,7 @@ public abstract class RunState {
         case QUEUED:
           return state(
               SUBMITTED, // for backwards compatibility
-              data().builder()
+              data().toBuilder()
                   .executionId(executionId)
                   .executionDescription(ExecutionDescription.forImage(dockerImage))
                   .tries(data().tries() + 1)
@@ -189,7 +192,7 @@ public abstract class RunState {
         case QUEUED:
           return state(
               QUEUED,
-              data().builder()
+              data().toBuilder()
                   .addMessage(message)
                   .build());
 
@@ -216,7 +219,7 @@ public abstract class RunState {
         case PREPARE:
           return state(
               SUBMITTING,
-              data().builder()
+              data().toBuilder()
                   .executionDescription(executionDescription)
                   .build());
 
@@ -231,7 +234,7 @@ public abstract class RunState {
         case SUBMITTING:
           return state(
               SUBMITTED,
-              data().builder()
+              data().toBuilder()
                   .executionId(executionId)
                   .tries(data().tries() + 1)
                   .build());
@@ -260,7 +263,7 @@ public abstract class RunState {
           final double cost = exitCost(exitCode);
           final Message.MessageLevel level = messageLevel(exitCode);
 
-          final StateData newStateData = data().builder()
+          final StateData newStateData = data().toBuilder()
               .retryCost(data().retryCost() + cost)
               .lastExit(exitCode)
               .addMessage(Message.create(level, "Exit code: " + exitCode))
@@ -297,7 +300,7 @@ public abstract class RunState {
         case SUBMITTED:
         case RUNNING:
         case PREPARE:
-          final StateData newStateData = data().builder()
+          final StateData newStateData = data().toBuilder()
               .retryCost(data().retryCost() + FAILURE_COST)
               .lastExit(empty())
               .addMessage(Message.error(message))
@@ -328,7 +331,7 @@ public abstract class RunState {
         case FAILED:
           return state(
               QUEUED,
-              data().builder()
+              data().toBuilder()
                   .retryDelayMillis(delayMillis)
                   .build());
 
@@ -384,14 +387,14 @@ public abstract class RunState {
       State state,
       Time time,
       OutputHandler... outputHandler) {
-    return create(workflowInstance, state, StateData.zero(), time, outputHandler);
+    return create(workflowInstance, state, StateData.builder().build(), time, outputHandler);
   }
 
   public static RunState create(
       WorkflowInstance workflowInstance,
       State state,
       OutputHandler... outputHandler) {
-    return create(workflowInstance, state, StateData.zero(), outputHandler);
+    return create(workflowInstance, state, StateData.builder().build(), outputHandler);
   }
 
   public static RunState create(

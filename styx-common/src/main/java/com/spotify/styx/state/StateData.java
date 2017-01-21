@@ -21,37 +21,68 @@
 package com.spotify.styx.state;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.auto.value.AutoValue;
+import com.google.common.collect.ImmutableList;
 import com.spotify.styx.model.ExecutionDescription;
-import io.norberg.automatter.AutoMatter;
-import java.util.List;
 import java.util.Optional;
 
 /**
  * A value type for holding data related to the various states of the {@link RunState}.
- *
- * <p>Uses auto-matter over auto-value because we get a builder by default, which is also better
- * suited for copy-modifying values. Another plus is the boilerplate-free Jackson integration.
  */
-@AutoMatter
+@AutoValue
 @JsonIgnoreProperties(ignoreUnknown = true)
-public interface StateData {
+public abstract class StateData {
 
-  int tries();
-  double retryCost();
-  Optional<Long> retryDelayMillis();
-  Optional<Integer> lastExit();
-  Optional<String> triggerId();
-  Optional<String> executionId();
-  Optional<ExecutionDescription> executionDescription();
-  List<Message> messages();
+  @JsonProperty
+  public abstract int tries();
 
-  StateDataBuilder builder();
+  @JsonProperty
+  public abstract double retryCost();
 
-  static StateDataBuilder newBuilder() {
-    return new StateDataBuilder();
+  @JsonProperty
+  public abstract Optional<Long> retryDelayMillis();
+
+  @JsonProperty
+  public abstract Optional<Integer> lastExit();
+
+  @JsonProperty
+  public abstract Optional<String> trigger();
+
+  @JsonProperty
+  public abstract Optional<String> executionId();
+
+  @JsonProperty
+  public abstract Optional<ExecutionDescription> executionDescription();
+
+  @JsonProperty
+  public abstract ImmutableList<Message> messages();
+
+  public static Builder builder() {
+    return new AutoValue_StateData.Builder()
+        .tries(0)
+        .retryCost(0.0);
   }
 
-  static StateData zero() {
-    return newBuilder().build();
+  public abstract Builder toBuilder();
+
+  @AutoValue.Builder
+  public abstract static class Builder {
+    public abstract Builder tries(int value);
+    public abstract Builder retryCost(double value);
+    public abstract Builder retryDelayMillis(Long value);
+    public abstract Builder lastExit(Optional<Integer> value);
+    public abstract Builder lastExit(Integer value);
+    public abstract Builder trigger(String value);
+    public abstract Builder executionId(String value);
+    public abstract Builder executionDescription(ExecutionDescription value);
+    abstract ImmutableList.Builder<Message> messagesBuilder();
+    public Builder addMessage(Message value) {
+      messagesBuilder().add(value);
+      return this;
+    }
+
+    public abstract StateData build();
   }
+
 }

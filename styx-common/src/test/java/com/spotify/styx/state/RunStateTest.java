@@ -126,15 +126,16 @@ public class RunStateTest {
   }
 
   @Test
-  public void testSetTriggerId() throws Exception {
+  public void testtriggerId() throws Exception {
     transitioner.initialize(RunState.fresh(WORKFLOW_INSTANCE, this::record));
     transitioner.receive(eventFactory.triggerExecution("trig"));
 
-    assertThat(transitioner.get(WORKFLOW_INSTANCE).data().triggerId(), hasValue("trig"));
+    assertThat(transitioner.get(WORKFLOW_INSTANCE).data().trigger(), hasValue("trig"));
+//    assertThat(transitioner.get(WORKFLOW_INSTANCE).data().trigger(), hasValue(Trigger.natural("trig")));
   }
 
   @Test
-  public void testSetExecutionId() throws Exception {
+  public void testexecutionId() throws Exception {
     transitioner.initialize(RunState.fresh(WORKFLOW_INSTANCE, this::record));
     transitioner.receive(eventFactory.triggerExecution("trig"));
     transitioner.receive(eventFactory.created(TEST_EXECUTION_ID_1, DOCKER_IMAGE));

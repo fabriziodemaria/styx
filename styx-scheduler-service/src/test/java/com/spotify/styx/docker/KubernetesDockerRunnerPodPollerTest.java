@@ -140,8 +140,8 @@ public class KubernetesDockerRunnerPodPollerTest {
   }
 
   private void setupActiveInstances(RunState.State state) {
-    StateData stateData = StateData.newBuilder().executionId(POD_NAME).build();
-    StateData stateData2 = StateData.newBuilder().executionId(POD_NAME_2).build();
+    StateData stateData = StateData.builder().executionId(POD_NAME).build();
+    StateData stateData2 = StateData.builder().executionId(POD_NAME_2).build();
     Map<WorkflowInstance, RunState> map = new HashMap<>();
     map.put(WORKFLOW_INSTANCE,
         RunState.create(WORKFLOW_INSTANCE, state, stateData));

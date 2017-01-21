@@ -89,7 +89,8 @@ public class StateInitializingTriggerTest {
     RunState state = stateManager.get(expectedInstance);
 
     assertThat(state.state(), is(RunState.State.QUEUED));
-    assertThat(state.data().triggerId(), hasValue("trig"));
+    assertThat(state.data().trigger(), hasValue("trig"));
+//    assertThat(state.data().trigger(), hasValue(Trigger.natural("trig")));
   }
 
   @Test

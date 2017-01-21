@@ -124,6 +124,7 @@ public class CliResourceTest extends VersionedApiTest {
     assertThat(response, hasStatus(withCode(Status.OK)));
 
     String json = response.payload().get().utf8();
+    System.out.println(json);
     ActiveStatesPayload parsed = Json.OBJECT_MAPPER.readValue(json, ActiveStatesPayload.class);
 
     assertThat(parsed.activeStates(), hasSize(2));

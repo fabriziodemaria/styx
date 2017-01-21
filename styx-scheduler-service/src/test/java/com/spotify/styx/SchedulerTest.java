@@ -143,8 +143,7 @@ public class SchedulerTest {
   public void shouldExecuteRetryIfDelayHasPassed() throws Exception {
     setUp(20);
     initWorkflow(workflowUsingResources(WORKFLOW_ID1));
-
-    StateData stateData = StateData.newBuilder().retryDelayMillis(15_000L).tries(10).build();
+    StateData stateData = StateData.builder().retryDelayMillis(15_000L).tries(10).build();
     init(RunState.create(INSTANCE, State.QUEUED, stateData, time));
 
     now = now.plus(15, ChronoUnit.SECONDS);
@@ -158,7 +157,7 @@ public class SchedulerTest {
     setUp(20);
     initWorkflow(workflowUsingResources(WORKFLOW_ID1));
 
-    StateData stateData = StateData.newBuilder().tries(0).build();
+    StateData stateData = StateData.builder().tries(0).build();
     init(RunState.create(INSTANCE, State.QUEUED, stateData, time));
 
     scheduler.tick();

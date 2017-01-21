@@ -22,34 +22,42 @@ package com.spotify.styx.state;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import io.norberg.automatter.AutoMatter;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.auto.value.AutoValue;
 
 /**
  * A value type for holding a message.
  */
-@AutoMatter
+@AutoValue
 @JsonIgnoreProperties(ignoreUnknown = true)
-public interface Message {
-  MessageLevel level();
-  String line();
+public abstract class Message {
 
-  static Message create(MessageLevel level, String line) {
-    return new MessageBuilder().level(level).line(line).build();
+  @JsonProperty
+  public abstract MessageLevel level();
+
+  @JsonProperty
+  public abstract String line();
+
+  @JsonCreator
+  public static Message create(
+      @JsonProperty("level") MessageLevel level,
+      @JsonProperty("line") String line) {
+    return new AutoValue_Message(level, line);
   }
 
-  static Message info(String line) {
+  public static Message info(String line) {
     return create(MessageLevel.INFO, line);
   }
 
-  static Message warning(String line) {
+  public static Message warning(String line) {
     return create(MessageLevel.WARNING, line);
   }
 
-  static Message error(String line) {
+  public static Message error(String line) {
     return create(MessageLevel.ERROR, line);
   }
 
-  enum MessageLevel {
+  public enum MessageLevel {
     INFO, WARNING, ERROR, UNKNOWN;
 
     @JsonCreator

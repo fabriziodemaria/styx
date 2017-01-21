@@ -41,6 +41,7 @@ import com.spotify.styx.testdata.TestData;
 import com.spotify.styx.util.RetryUtil;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -132,7 +133,7 @@ public class TerminationHandlerTest {
   }
 
   private StateData data(int tries, double cost, int lastExit) {
-    return StateData.newBuilder()
+    return StateData.builder()
         .tries(tries)
         .retryCost(cost)
         .lastExit(lastExit)
