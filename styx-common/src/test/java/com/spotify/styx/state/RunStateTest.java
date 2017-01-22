@@ -32,10 +32,12 @@ import static com.spotify.styx.state.RunState.State.TERMINATED;
 import static java.util.Optional.empty;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 
 import com.spotify.styx.WorkflowInstanceEventFactory;
 import com.spotify.styx.model.ExecutionDescription;
+import com.spotify.styx.model.Trigger;
 import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.testdata.TestData;
 import java.util.Arrays;
@@ -130,7 +132,8 @@ public class RunStateTest {
     transitioner.initialize(RunState.fresh(WORKFLOW_INSTANCE, this::record));
     transitioner.receive(eventFactory.triggerExecution("trig"));
 
-    assertThat(transitioner.get(WORKFLOW_INSTANCE).data().triggerId(), hasValue("trig"));
+    assertThat(transitioner.get(WORKFLOW_INSTANCE).data().trigger().get().toTrigger(),
+        is(Trigger.natural("trig")));
   }
 
   @Test

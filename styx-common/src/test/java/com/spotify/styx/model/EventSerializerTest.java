@@ -23,7 +23,9 @@ package com.spotify.styx.model;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 
+import com.spotify.styx.model.TriggerSerializer.PersistentTrigger;
 import com.spotify.styx.state.Message;
+import com.spotify.styx.util.Json;
 import java.util.Arrays;
 import java.util.Optional;
 import okio.ByteString;
@@ -34,7 +36,10 @@ public class EventSerializerTest {
 
   private static final WorkflowId WORKFLOW1 = WorkflowId.create("component", "endpoint1");
   private static final String PARAMETER1 = "2016-01-01";
-  private static final String TRIGGER1 = "trig1";
+  private static final PersistentTrigger TRIGGER1 = TriggerSerializer.convertTriggerToPersistentTrigger(
+      Trigger.unknown("trig1"));
+  private static final PersistentTrigger TRIGGER_UNKNOWN = TriggerSerializer.convertTriggerToPersistentTrigger(
+      Trigger.unknown("UNKNOWN"));
   private static final WorkflowInstance INSTANCE1 = WorkflowInstance.create(WORKFLOW1, PARAMETER1);
   private static final String POD_NAME = "test-event";
   private static final String DOCKER_IMAGE = "busybox:1.1";
@@ -101,8 +106,8 @@ public class EventSerializerTest {
         eventSerializer.deserialize(json("retryAfter", "\"delay_millis\":12345")),
         is(Event.retryAfter(INSTANCE1, 12345)));
     assertThat(
-        eventSerializer.deserialize(json("triggerExecution", "\"trigger_id\":\"trig\"")),
-        is(Event.triggerExecution(INSTANCE1, "trig")));
+        eventSerializer.deserialize(json("triggerExecution", "\"trigger_id\":\"trig1\"")),
+        is(Event.triggerExecution(INSTANCE1, TRIGGER1)));
     assertThat(
         eventSerializer.deserialize(json("terminate", "\"exit_code\":20")),
         is(Event.terminate(INSTANCE1, 20)));
@@ -116,14 +121,17 @@ public class EventSerializerTest {
     assertThat(
         eventSerializer.deserialize(json("created", "\"execution_id\":\"" + POD_NAME + "\"")),
         is(Event.created(INSTANCE1, POD_NAME, "UNKNOWN")));
-    assertThat(
+    System.out.println(eventSerializer.deserialize(json("triggerExecution")));
+        assertThat(
         eventSerializer.deserialize(json("triggerExecution")),
-        is(Event.triggerExecution(INSTANCE1, "UNKNOWN")));
+        is(Event.triggerExecution(INSTANCE1, TRIGGER_UNKNOWN)));
   }
 
   private void assertRoundtrip(Event event) {
     ByteString byteString = eventSerializer.serialize(event);
+    System.out.println(byteString.utf8());
     Event deserializedEvent = eventSerializer.deserialize(byteString);
+    System.out.println(deserializedEvent);
     Assert.assertThat(
         "serialized event did not match actual event after deserialization: " + byteString.utf8(),
         deserializedEvent, is(event));

@@ -27,6 +27,9 @@ import static org.mockito.Mockito.mock;
 
 import com.spotify.styx.model.Event;
 import com.spotify.styx.model.SequenceEvent;
+import com.spotify.styx.model.Trigger;
+import com.spotify.styx.model.TriggerSerializer;
+import com.spotify.styx.model.TriggerSerializer.PersistentTrigger;
 import com.spotify.styx.model.WorkflowId;
 import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.model.data.ExecStatusData;
@@ -44,13 +47,21 @@ public class BigTableStorageTest {
 
   private static final String PARAMETER1 = "2016-01-01";
   private static final String PARAMETER2 = "2016-01-02";
-  private static final String PARAMETER3 = "2016-01-03";
 
   private static final WorkflowId WORKFLOW_ID1 = WorkflowId.create("component", "endpoint1");
   private static final WorkflowId WORKFLOW_ID2 = WorkflowId.create("component", "endpoint2");
   private static final WorkflowInstance WFI1 = WorkflowInstance.create(WORKFLOW_ID1, PARAMETER1);
   private static final WorkflowInstance WFI2 = WorkflowInstance.create(WORKFLOW_ID1, PARAMETER2);
   private static final WorkflowInstance WFI3 = WorkflowInstance.create(WORKFLOW_ID2, PARAMETER1);
+
+  private static final PersistentTrigger TRIGGER = TriggerSerializer.convertTriggerToPersistentTrigger(
+      Trigger.unknown("triggerId"));
+  private static final PersistentTrigger TRIGGER1 = TriggerSerializer.convertTriggerToPersistentTrigger(
+      Trigger.unknown("triggerId1"));
+  private static final PersistentTrigger TRIGGER2 = TriggerSerializer.convertTriggerToPersistentTrigger(
+      Trigger.unknown("triggerId2"));
+  private static final PersistentTrigger TRIGGER3 = TriggerSerializer.convertTriggerToPersistentTrigger(
+      Trigger.unknown("triggerId3"));
 
   @Rule
   public ExpectedException thrown = ExpectedException.none();
@@ -74,12 +85,12 @@ public class BigTableStorageTest {
   @Test
   public void shouldReturnExecutionDataForWorkflowInstance() throws Exception {
     setUp(0);
-    storage.writeEvent(SequenceEvent.create(Event.triggerExecution(WFI1, "triggerId"), 0L, 0L));
+    storage.writeEvent(SequenceEvent.create(Event.triggerExecution(WFI1, TRIGGER), 0L, 0L));
     storage.writeEvent(SequenceEvent.create(Event.created(WFI1, "execId", "img"), 1L, 1L));
     storage.writeEvent(SequenceEvent.create(Event.started(WFI1), 2L, 2L));
 
     WorkflowInstanceExecutionData workflowInstanceExecutionData = storage.executionData(WFI1);
-    assertThat(workflowInstanceExecutionData.triggers().get(0).triggerId(), is("triggerId"));
+    assertThat(workflowInstanceExecutionData.triggers().get(0).triggerId(), is(TRIGGER));
     assertThat(workflowInstanceExecutionData.triggers().get(0).executions().get(0).executionId(), is("execId"));
     assertThat(workflowInstanceExecutionData.triggers().get(0).executions().get(0).dockerImage(), is("img"));
     assertThat(workflowInstanceExecutionData.triggers().get(0).executions().get(0).statuses().get(0), is(
@@ -91,11 +102,11 @@ public class BigTableStorageTest {
   @Test
   public void shouldReturnExecutionDataForWorkflow() throws Exception {
     setUp(0);
-    storage.writeEvent(SequenceEvent.create(Event.triggerExecution(WFI1, "triggerId1"), 0L, 0L));
+    storage.writeEvent(SequenceEvent.create(Event.triggerExecution(WFI1, TRIGGER1), 0L, 0L));
     storage.writeEvent(SequenceEvent.create(Event.created(WFI1, "execId1", "img1"), 1L, 1L));
     storage.writeEvent(SequenceEvent.create(Event.started(WFI1), 2L, 2L));
 
-    storage.writeEvent(SequenceEvent.create(Event.triggerExecution(WFI2, "triggerId2"), 0L, 3L));
+    storage.writeEvent(SequenceEvent.create(Event.triggerExecution(WFI2, TRIGGER2), 0L, 3L));
     storage.writeEvent(SequenceEvent.create(Event.created(WFI2, "execId2", "img2"), 1L, 4L));
     storage.writeEvent(SequenceEvent.create(Event.started(WFI2), 2L, 5L));
 
@@ -104,14 +115,14 @@ public class BigTableStorageTest {
 
     assertThat(workflowInstanceExecutionData.size(), is(2));
 
-    assertThat(workflowInstanceExecutionData.get(0).triggers().get(0).triggerId(), is("triggerId1"));
+    assertThat(workflowInstanceExecutionData.get(0).triggers().get(0).triggerId(), is(TRIGGER1));
     assertThat(workflowInstanceExecutionData.get(0).triggers().get(0).executions().get(0).executionId(), is("execId1"));
     assertThat(workflowInstanceExecutionData.get(0).triggers().get(0).executions().get(0).dockerImage(), is("img1"));
     assertThat(workflowInstanceExecutionData.get(0).triggers().get(0).executions().get(0).statuses()
                    .get(0), is(ExecStatusData.create(Instant.ofEpochMilli(1L), "SUBMITTED")));
     assertThat(workflowInstanceExecutionData.get(0).triggers().get(0).executions().get(0).statuses()
                    .get(1), is(ExecStatusData.create(Instant.ofEpochMilli(2L), "STARTED")));
-    assertThat(workflowInstanceExecutionData.get(1).triggers().get(0).triggerId(), is("triggerId2"));
+    assertThat(workflowInstanceExecutionData.get(1).triggers().get(0).triggerId(), is(TRIGGER2));
     assertThat(workflowInstanceExecutionData.get(1).triggers().get(0).executions().get(0).executionId(), is("execId2"));
     assertThat(workflowInstanceExecutionData.get(1).triggers().get(0).executions().get(0).dockerImage(), is("img2"));
     assertThat(workflowInstanceExecutionData.get(1).triggers().get(0).executions().get(0).statuses()
@@ -123,29 +134,29 @@ public class BigTableStorageTest {
   @Test
   public void shouldPaginateExecutionDataForWorkflow() throws Exception {
     setUp(0);
-    storage.writeEvent(SequenceEvent.create(Event.triggerExecution(WFI1, "triggerId1"), 0L, 0L));
-    storage.writeEvent(SequenceEvent.create(Event.triggerExecution(WFI2, "triggerId2"), 0L, 3L));
-    storage.writeEvent(SequenceEvent.create(Event.triggerExecution(WFI3, "triggerId3"), 0L, 3L));
+    storage.writeEvent(SequenceEvent.create(Event.triggerExecution(WFI1, TRIGGER1), 0L, 0L));
+    storage.writeEvent(SequenceEvent.create(Event.triggerExecution(WFI2, TRIGGER2), 0L, 3L));
+    storage.writeEvent(SequenceEvent.create(Event.triggerExecution(WFI3, TRIGGER3), 0L, 3L));
 
     List<WorkflowInstanceExecutionData> workflowInstanceExecutionData =
         storage.executionData(WORKFLOW_ID1, WFI2.parameter(), 100);
 
     assertThat(workflowInstanceExecutionData.size(), is(1));
-    assertThat(workflowInstanceExecutionData.get(0).triggers().get(0).triggerId(), is("triggerId2"));
+    assertThat(workflowInstanceExecutionData.get(0).triggers().get(0).triggerId(), is(TRIGGER2));
   }
 
   @Test
   public void shouldLimitExecutionDataForWorkflow() throws Exception {
     setUp(0);
-    storage.writeEvent(SequenceEvent.create(Event.triggerExecution(WFI1, "triggerId1"), 0L, 0L));
-    storage.writeEvent(SequenceEvent.create(Event.triggerExecution(WFI2, "triggerId2"), 0L, 3L));
-    storage.writeEvent(SequenceEvent.create(Event.triggerExecution(WFI3, "triggerId3"), 0L, 3L));
+    storage.writeEvent(SequenceEvent.create(Event.triggerExecution(WFI1, TRIGGER1), 0L, 0L));
+    storage.writeEvent(SequenceEvent.create(Event.triggerExecution(WFI2, TRIGGER2), 0L, 3L));
+    storage.writeEvent(SequenceEvent.create(Event.triggerExecution(WFI3, TRIGGER3), 0L, 3L));
 
     List<WorkflowInstanceExecutionData> workflowInstanceExecutionData =
         storage.executionData(WORKFLOW_ID1, WFI1.parameter(), 1);
 
     assertThat(workflowInstanceExecutionData.size(), is(1));
-    assertThat(workflowInstanceExecutionData.get(0).triggers().get(0).triggerId(), is("triggerId1"));
+    assertThat(workflowInstanceExecutionData.get(0).triggers().get(0).triggerId(), is(TRIGGER1));
   }
 
   @Test

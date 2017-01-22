@@ -38,6 +38,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.spotify.styx.model.DataEndpoint;
 import com.spotify.styx.model.Partitioning;
+import com.spotify.styx.model.Trigger;
 import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowId;
 import com.spotify.styx.model.WorkflowInstance;
@@ -89,7 +90,7 @@ public class StateInitializingTriggerTest {
     RunState state = stateManager.get(expectedInstance);
 
     assertThat(state.state(), is(RunState.State.QUEUED));
-    assertThat(state.data().triggerId(), hasValue("trig"));
+    assertThat(state.data().trigger().get().toTrigger(), is(Trigger.natural("trig")));
   }
 
   @Test

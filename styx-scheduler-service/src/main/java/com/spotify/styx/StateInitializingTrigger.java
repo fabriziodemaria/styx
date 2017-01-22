@@ -24,6 +24,9 @@ import com.spotify.styx.StyxScheduler.StateFactory;
 import com.spotify.styx.docker.WorkflowValidator;
 import com.spotify.styx.model.Event;
 import com.spotify.styx.model.Partitioning;
+import com.spotify.styx.model.Trigger;
+import com.spotify.styx.model.TriggerSerializer;
+import com.spotify.styx.model.TriggerSerializer.PersistentTrigger;
 import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.state.RunState;
@@ -65,7 +68,9 @@ final class StateInitializingTrigger implements TriggerListener {
 
     try {
       stateManager.initialize(initialState);
-      stateManager.receive(Event.triggerExecution(workflowInstance, triggerId));
+      stateManager.receive(
+          Event.triggerExecution(workflowInstance,
+              TriggerSerializer.convertTriggerToPersistentTrigger(Trigger.unknown(triggerId)))); //change this
     } catch (StateManager.IsClosed isClosed) {
       LOG.warn("State receiver is closed", isClosed);
     }

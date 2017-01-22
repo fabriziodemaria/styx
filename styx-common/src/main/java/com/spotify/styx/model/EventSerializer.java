@@ -30,11 +30,10 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.google.common.base.Throwables;
+import com.spotify.styx.model.TriggerSerializer.PersistentTrigger;
 import com.spotify.styx.state.Message;
-import io.norberg.automatter.jackson.AutoMatterModule;
+import com.spotify.styx.util.Json;
 import java.io.IOException;
 import java.util.Optional;
 import okio.ByteString;
@@ -42,10 +41,7 @@ import okio.ByteString;
 public final class EventSerializer {
 
   private static final SerializerVisitor SERIALIZER_VISITOR = new SerializerVisitor();
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-      .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE)
-      .registerModule(new AutoMatterModule())
-      .registerModule(new Jdk8Module());
+  private static final ObjectMapper OBJECT_MAPPER = Json.OBJECT_MAPPER;
 
   public static PersistentEvent convertEventToPersistentEvent(Event event) {
     return event.accept(SERIALIZER_VISITOR);
@@ -75,8 +71,8 @@ public final class EventSerializer {
     }
 
     @Override
-    public PersistentEvent triggerExecution(WorkflowInstance workflowInstance, String triggerId) {
-      return new TriggerExecution(workflowInstance.toKey(), Optional.of(triggerId));
+    public PersistentEvent triggerExecution(WorkflowInstance workflowInstance, PersistentTrigger trigger) {
+      return new TriggerExecution(workflowInstance.toKey(), Optional.of(trigger));
     }
 
     @Override
@@ -212,19 +208,29 @@ public final class EventSerializer {
 
   public static class TriggerExecution extends PersistentEvent {
 
-    public final String triggerId;
+    public final Optional<String> triggerId; //for backwards compatibility
+    public final Optional<PersistentTrigger> trigger;
 
     @JsonCreator
     public TriggerExecution(
         @JsonProperty("workflow_instance") String workflowInstance,
-        @JsonProperty("trigger_id") Optional<String> triggerId) {
+        @JsonProperty("trigger") Optional<PersistentTrigger> trigger) {
       super("triggerExecution", workflowInstance);
-      this.triggerId = triggerId.orElse("UNKNOWN");
+      this.triggerId = Optional.empty();
+      this.trigger = trigger;
     }
 
     @Override
     public Event toEvent() {
-      return Event.triggerExecution(WorkflowInstance.parseKey(workflowInstance), triggerId);
+      if (trigger.isPresent()) {
+        return Event.triggerExecution(WorkflowInstance.parseKey(workflowInstance), trigger.get());
+      } else if (triggerId.isPresent()) {
+        return Event.triggerExecution(WorkflowInstance.parseKey(workflowInstance),
+            TriggerSerializer.convertTriggerToPersistentTrigger(Trigger.unknown(triggerId.get())));
+      } else {
+        return Event.triggerExecution(WorkflowInstance.parseKey(workflowInstance),
+            TriggerSerializer.convertTriggerToPersistentTrigger(Trigger.unknown("UNKNOWN")));
+      }
     }
   }
 

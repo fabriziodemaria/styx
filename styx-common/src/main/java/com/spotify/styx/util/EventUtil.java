@@ -21,8 +21,10 @@
 package com.spotify.styx.util;
 
 import com.spotify.styx.model.Event;
+import com.spotify.styx.model.EventSerializer.PersistentEvent;
 import com.spotify.styx.model.EventVisitor;
 import com.spotify.styx.model.ExecutionDescription;
+import com.spotify.styx.model.TriggerSerializer.PersistentTrigger;
 import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.state.Message;
 
@@ -50,7 +52,7 @@ public final class EventUtil {
     }
 
     @Override
-    public String triggerExecution(WorkflowInstance workflowInstance, String triggerId) {
+    public String triggerExecution(WorkflowInstance workflowInstance, PersistentTrigger trigger) {
       return "triggerExecution";
     }
 
