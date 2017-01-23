@@ -30,6 +30,7 @@ import com.spotify.styx.api.cli.ActiveStatesPayload.ActiveState;
 import com.spotify.styx.model.Event;
 import com.spotify.styx.model.EventVisitor;
 import com.spotify.styx.model.ExecutionDescription;
+import com.spotify.styx.model.Trigger;
 import com.spotify.styx.model.WorkflowId;
 import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.state.Message;
@@ -96,8 +97,8 @@ class CliUtil {
     }
 
     @Override
-    public String triggerExecution(WorkflowInstance workflowInstance, String triggerId) {
-      return String.format("Trigger id: %s", triggerId);
+    public String triggerExecution(WorkflowInstance workflowInstance, Trigger trigger) {
+      return String.format("Trigger id: %s", trigger.triggerId());
     }
 
     @Override

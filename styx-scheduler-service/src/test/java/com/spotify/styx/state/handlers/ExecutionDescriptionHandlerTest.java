@@ -34,6 +34,7 @@ import static org.junit.Assert.assertTrue;
 import com.google.common.collect.Lists;
 import com.spotify.styx.model.DataEndpoint;
 import com.spotify.styx.model.Event;
+import com.spotify.styx.model.Trigger;
 import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowId;
 import com.spotify.styx.model.WorkflowInstance;
@@ -56,6 +57,7 @@ public class ExecutionDescriptionHandlerTest {
 
   private static final String DOCKER_IMAGE = "my_docker_image";
   private static final String COMMIT_SHA = "71d70fca99e29812e81d1ed0a5c9d3559f4118e9";
+  private static final Trigger TRIGGER = Trigger.unknown("trig");
 
   private Storage storage;
   private StateManager stateManager;
@@ -82,7 +84,7 @@ public class ExecutionDescriptionHandlerTest {
     storage.store(workflow);
     storage.patchState(workflow.id(), workflowState);
     stateManager.initialize(runState);
-    stateManager.receive(Event.triggerExecution(workflowInstance, "trig"));
+    stateManager.receive(Event.triggerExecution(workflowInstance, TRIGGER));
     stateManager.receive(Event.dequeue(workflowInstance));
 
     RunState currentState = stateManager.get(workflowInstance);
@@ -116,7 +118,7 @@ public class ExecutionDescriptionHandlerTest {
     RunState runState = RunState.fresh(workflowInstance, toTest);
 
     stateManager.initialize(runState);
-    stateManager.receive(Event.triggerExecution(workflowInstance, "trig"));
+    stateManager.receive(Event.triggerExecution(workflowInstance, TRIGGER));
     stateManager.receive(Event.dequeue(workflowInstance));
 
     RunState failed = stateManager.get(workflowInstance);

@@ -33,6 +33,7 @@ import com.spotify.styx.docker.DockerRunner;
 import com.spotify.styx.model.DataEndpoint;
 import com.spotify.styx.model.Event;
 import com.spotify.styx.model.ExecutionDescription;
+import com.spotify.styx.model.Trigger;
 import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.state.RunState;
@@ -61,6 +62,7 @@ public class DockerRunnerHandlerTest {
   private static final String TEST_DOCKER_IMAGE = "busybox:1.1";
   private static final ExecutionDescription EXECUTION_DESCRIPTION = ExecutionDescription.create(
       TEST_DOCKER_IMAGE, Arrays.asList("--date", "{}", "--bar"), empty(), empty());
+  private static final Trigger TRIGGER = Trigger.unknown("trig");
 
   @Test
   public void shouldPassInArguments() throws Exception {
@@ -140,7 +142,7 @@ public class DockerRunnerHandlerTest {
     RunState runState = RunState.create(workflowInstance, RunState.State.NEW, dockerRunnerHandler);
 
     stateManager.initialize(runState);
-    stateManager.receive(Event.triggerExecution(workflowInstance, "trig"));
+    stateManager.receive(Event.triggerExecution(workflowInstance, TRIGGER));
     stateManager.receive(Event.dequeue(workflowInstance));
     stateManager.receive(Event.submit(workflowInstance, EXECUTION_DESCRIPTION));
     stateManager.receive(Event.runError(workflowInstance, ""));

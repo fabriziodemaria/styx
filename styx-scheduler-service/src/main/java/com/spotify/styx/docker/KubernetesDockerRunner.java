@@ -33,6 +33,7 @@ import com.spotify.styx.model.DataEndpoint;
 import com.spotify.styx.model.Event;
 import com.spotify.styx.model.EventVisitor;
 import com.spotify.styx.model.ExecutionDescription;
+import com.spotify.styx.model.Trigger;
 import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.monitoring.Stats;
 import com.spotify.styx.state.Message;
@@ -349,7 +350,7 @@ class KubernetesDockerRunner implements DockerRunner {
     }
 
     @Override
-    public Boolean triggerExecution(WorkflowInstance workflowInstance, String triggerId) {
+    public Boolean triggerExecution(WorkflowInstance workflowInstance, Trigger trigger) {
       return false;
     }
 

@@ -32,7 +32,7 @@ import com.spotify.styx.state.Message;
 @Visitor(resultVariableName = "R")
 public interface EventVisitor<R> {
 
-  R triggerExecution(@Getter WorkflowInstance workflowInstance, String triggerId);
+  R triggerExecution(@Getter WorkflowInstance workflowInstance, Trigger trigger);
   R info(@Getter WorkflowInstance workflowInstance, Message message);
   R dequeue(@Getter WorkflowInstance workflowInstance);
   R submit(@Getter WorkflowInstance workflowInstance, ExecutionDescription executionDescription);
