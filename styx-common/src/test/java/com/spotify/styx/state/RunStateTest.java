@@ -36,8 +36,6 @@ import static org.junit.Assert.assertThat;
 
 import com.spotify.styx.WorkflowInstanceEventFactory;
 import com.spotify.styx.model.ExecutionDescription;
-import com.spotify.styx.model.Trigger;
-import com.spotify.styx.model.TriggerSerializer;
 import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.testdata.TestData;
 import java.util.Arrays;

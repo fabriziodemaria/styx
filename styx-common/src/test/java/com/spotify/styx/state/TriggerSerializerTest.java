@@ -14,7 +14,7 @@
  * -/-/- 
  */
 
-package com.spotify.styx.model;
+package com.spotify.styx.state;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;

@@ -14,7 +14,7 @@
  * -/-/- 
  */
 
-package com.spotify.styx.model;
+package com.spotify.styx.state;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;

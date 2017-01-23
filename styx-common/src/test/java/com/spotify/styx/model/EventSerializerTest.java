@@ -24,6 +24,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 
 import com.spotify.styx.state.Message;
+import com.spotify.styx.state.Trigger;
 import java.util.Arrays;
 import java.util.Optional;
 import okio.ByteString;

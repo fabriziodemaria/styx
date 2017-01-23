@@ -22,7 +22,7 @@ package com.spotify.styx.state;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.spotify.styx.model.ExecutionDescription;
-import com.spotify.styx.model.TriggerSerializer.PersistentTrigger;
+import com.spotify.styx.state.TriggerSerializer.PersistentTrigger;
 import io.norberg.automatter.AutoMatter;
 import java.util.List;
 import java.util.Optional;

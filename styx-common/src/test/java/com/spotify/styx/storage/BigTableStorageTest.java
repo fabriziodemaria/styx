@@ -27,11 +27,11 @@ import static org.mockito.Mockito.mock;
 
 import com.spotify.styx.model.Event;
 import com.spotify.styx.model.SequenceEvent;
-import com.spotify.styx.model.Trigger;
 import com.spotify.styx.model.WorkflowId;
 import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.model.data.ExecStatusData;
 import com.spotify.styx.model.data.WorkflowInstanceExecutionData;
+import com.spotify.styx.state.Trigger;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;

@@ -24,6 +24,7 @@ import com.github.sviperll.adt4j.GenerateValueClassForVisitor;
 import com.github.sviperll.adt4j.Getter;
 import com.github.sviperll.adt4j.Visitor;
 import com.spotify.styx.state.Message;
+import com.spotify.styx.state.Trigger;
 
 /**
  * Generated {@link Event} ADT for all events that can be received by RunState

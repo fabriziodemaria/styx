@@ -14,7 +14,7 @@
  * -/-/- 
  */
 
-package com.spotify.styx.model;
+package com.spotify.styx.state;
 
 import com.github.sviperll.adt4j.GenerateValueClassForVisitor;
 import com.github.sviperll.adt4j.Getter;

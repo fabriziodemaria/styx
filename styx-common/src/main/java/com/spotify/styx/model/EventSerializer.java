@@ -20,7 +20,7 @@
 
 package com.spotify.styx.model;
 
-import static com.spotify.styx.model.TriggerSerializer.convertTriggerToPersistentTrigger;
+import static com.spotify.styx.state.TriggerSerializer.convertTriggerToPersistentTrigger;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -33,8 +33,9 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Throwables;
-import com.spotify.styx.model.TriggerSerializer.PersistentTrigger;
 import com.spotify.styx.state.Message;
+import com.spotify.styx.state.Trigger;
+import com.spotify.styx.state.TriggerSerializer.PersistentTrigger;
 import com.spotify.styx.util.Json;
 import java.io.IOException;
 import java.util.Optional;

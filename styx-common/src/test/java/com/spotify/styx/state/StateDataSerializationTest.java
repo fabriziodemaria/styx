@@ -22,7 +22,7 @@ package com.spotify.styx.state;
 
 import static com.github.npathai.hamcrestopt.OptionalMatchers.isEmpty;
 import static com.jayway.jsonpath.matchers.JsonPathMatchers.hasJsonPath;
-import static com.spotify.styx.model.TriggerSerializer.convertTriggerToPersistentTrigger;
+import static com.spotify.styx.state.TriggerSerializer.convertTriggerToPersistentTrigger;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
@@ -30,7 +30,6 @@ import static org.junit.Assert.assertThat;
 
 import com.spotify.styx.model.DataEndpoint;
 import com.spotify.styx.model.ExecutionDescription;
-import com.spotify.styx.model.Trigger;
 import com.spotify.styx.util.Json;
 import java.util.Arrays;
 import java.util.Optional;

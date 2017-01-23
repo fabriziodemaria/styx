@@ -22,9 +22,9 @@ package com.spotify.styx;
 
 import com.spotify.styx.model.Event;
 import com.spotify.styx.model.ExecutionDescription;
-import com.spotify.styx.model.Trigger;
 import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.state.Message;
+import com.spotify.styx.state.Trigger;
 
 public class WorkflowInstanceEventFactory {
 
