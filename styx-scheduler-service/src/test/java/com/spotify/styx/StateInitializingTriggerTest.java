@@ -38,6 +38,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.spotify.styx.model.DataEndpoint;
 import com.spotify.styx.model.Partitioning;
+import com.spotify.styx.model.Trigger;
+import com.spotify.styx.model.TriggerSerializer;
 import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowId;
 import com.spotify.styx.model.WorkflowInstance;
@@ -90,6 +92,22 @@ public class StateInitializingTriggerTest {
 
     assertThat(state.state(), is(RunState.State.QUEUED));
     assertThat(state.data().triggerId(), hasValue("trig"));
+  }
+
+  @Test
+  public void shouldInjectTriggerExecutionEventWithTrigger() throws Exception {
+    DataEndpoint endpoint = dataEndpoint(HOURS);
+    Workflow workflow = Workflow.create("id", TestData.WORKFLOW_URI, endpoint);
+    setDockerImage(workflow.id(), workflow.schedule());
+    trigger.event(workflow, "trig", TIME);
+
+    WorkflowInstance expectedInstance = WorkflowInstance.create(workflow.id(), "2016-01-18T09");
+    RunState state = stateManager.get(expectedInstance);
+
+    assertThat(state.state(), is(RunState.State.QUEUED));
+    assertThat(
+        state.data().trigger(),
+        hasValue(TriggerSerializer.convertTriggerToPersistentTrigger(Trigger.unknown("trig"))));
   }
 
   @Test
