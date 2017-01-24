@@ -20,6 +20,8 @@
 
 package com.spotify.styx.state;
 
+import static com.spotify.styx.util.TriggerUtil.isBackfill;
+
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.spotify.styx.model.Event;
@@ -67,6 +69,15 @@ public class SyncStateManager implements StateManager {
   public Map<WorkflowInstance, RunState> activeStates() {
     final ImmutableMap.Builder<WorkflowInstance, RunState> builder = ImmutableMap.builder();
     states.entrySet().forEach(entry -> builder.put(entry.getKey(), entry.getValue()));
+    return builder.build();
+  }
+
+  @Override
+  public Map<WorkflowInstance, RunState> backfillActiveStates() {
+    final ImmutableMap.Builder<WorkflowInstance, RunState> builder = ImmutableMap.builder();
+    states.entrySet().stream()
+        .filter(entry -> isBackfill(entry.getValue().data().trigger().get().toTrigger()))
+        .forEach(entry -> builder.put(entry.getKey(), entry.getValue()));
     return builder.build();
   }
 

@@ -20,6 +20,8 @@
 
 package com.spotify.styx.state;
 
+import static com.spotify.styx.util.TriggerUtil.isBackfill;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
@@ -31,6 +33,7 @@ import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.storage.Storage;
 import com.spotify.styx.util.AlreadyInitializedException;
 import com.spotify.styx.util.Time;
+import com.spotify.styx.util.TriggerUtil;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
@@ -138,6 +141,15 @@ public class QueuedStateManager implements StateManager {
   public Map<WorkflowInstance, RunState> activeStates() {
     final ImmutableMap.Builder<WorkflowInstance, RunState> builder = ImmutableMap.builder();
     states.entrySet().forEach(entry -> builder.put(entry.getKey(), entry.getValue().runState));
+    return builder.build();
+  }
+
+  @Override
+  public Map<WorkflowInstance, RunState> backfillActiveStates() {
+    final ImmutableMap.Builder<WorkflowInstance, RunState> builder = ImmutableMap.builder();
+    states.entrySet().stream()
+        .filter(entry -> isBackfill(entry.getValue().runState.data().trigger().get().toTrigger()))
+        .forEach(entry -> builder.put(entry.getKey(), entry.getValue().runState));
     return builder.build();
   }
 

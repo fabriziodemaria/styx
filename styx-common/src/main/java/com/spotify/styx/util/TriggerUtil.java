@@ -31,6 +31,10 @@ public class TriggerUtil {
     return trigger.accept(TriggerNameVisitor.INSTANCE);
   }
 
+  public static boolean isBackfill(Trigger trigger) {
+    return trigger.accept(BackfillTriggerVisitor.INSTANCE);
+  }
+
   /**
    * A {@link TriggerVisitor} for extracting the name of a {@link Trigger}.
    */
@@ -57,4 +61,32 @@ public class TriggerUtil {
       return "unknown";
     }
   }
+
+  /**
+   * A {@link TriggerVisitor} for identifying backfill {@link Trigger}s.
+   */
+  private enum BackfillTriggerVisitor implements TriggerVisitor<Boolean> {
+    INSTANCE;
+
+    @Override
+    public Boolean natural(String triggerId) {
+      return false;
+    }
+
+    @Override
+    public Boolean adhoc(String triggerId) {
+      return false;
+    }
+
+    @Override
+    public Boolean backfill(String triggerId) {
+      return true;
+    }
+
+    @Override
+    public Boolean unknown(String triggerId) {
+      return false;
+    }
+  }
+
 }

@@ -64,6 +64,12 @@ public interface StateManager extends Closeable {
   Map<WorkflowInstance, RunState> activeStates();
 
   /**
+   * Get a map of all active {@link WorkflowInstance} states whose issuing {@link Trigger} is of
+   * kind "backfill".
+   */
+  Map<WorkflowInstance, RunState> backfillActiveStates();
+
+  /**
    * Returns the number of current active {@link RunState}.
    */
   long getActiveStatesCount();

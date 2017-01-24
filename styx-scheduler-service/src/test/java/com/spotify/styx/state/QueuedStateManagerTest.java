@@ -23,6 +23,7 @@ package com.spotify.styx.state;
 import static com.github.npathai.hamcrestopt.OptionalMatchers.hasValue;
 import static com.spotify.styx.state.QueuedStateManager.NO_EVENTS_PROCESSED;
 import static java.util.concurrent.ForkJoinPool.commonPool;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.hasSize;
@@ -39,7 +40,9 @@ import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.storage.InMemStorage;
 import com.spotify.styx.testdata.TestData;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.Stack;
@@ -57,6 +60,8 @@ public class QueuedStateManagerTest {
 
   private static final WorkflowInstance INSTANCE = WorkflowInstance.create(
       TestData.WORKFLOW_ID, "2016-05-01");
+  private static final WorkflowInstance INSTANCE2 = WorkflowInstance.create(
+      TestData.WORKFLOW_ID, "2016-05-02");
 
   private final static String TEST_EXECUTION_ID_1 = "execution_1";
   private final static String DOCKER_IMAGE = "busybox:1.1";
@@ -64,6 +69,7 @@ public class QueuedStateManagerTest {
   private static final Trigger TRIGGER1 = Trigger.unknown("trig1");
   private static final Trigger TRIGGER2 = Trigger.unknown("trig2");
   private static final Trigger TRIGGER3 = Trigger.unknown("trig3");
+  private static final Trigger BACKFILL_TRIGGER = Trigger.backfill("backfill-trig");
 
   private static final ExecutorService POOL = Executors.newFixedThreadPool(16);
 
@@ -140,6 +146,20 @@ public class QueuedStateManagerTest {
     assertThat(lastStoredEvent.event(), is(Event.triggerExecution(INSTANCE, TRIGGER3)));
     assertThat(storage.getLatestStoredCounter(INSTANCE), hasValue(8L));
     assertThat(storage.getCounterFromActiveStates(INSTANCE), hasValue(8L));
+  }
+
+  @Test
+  public void shouldGetBackfillActiveStates() throws Exception {
+    setUp();
+
+    stateManager.receive(Event.triggerExecution(INSTANCE, TRIGGER1));
+    assertTrue(stateManager.awaitIdle(1000));
+
+    stateManager.initialize(RunState.fresh(INSTANCE2));
+    stateManager.receive(Event.triggerExecution(INSTANCE2, BACKFILL_TRIGGER));
+    assertTrue(stateManager.awaitIdle(1000));
+
+    assertThat(stateManager.backfillActiveStates().keySet(), contains(INSTANCE2));
   }
 
   @Test(expected = RuntimeException.class)
