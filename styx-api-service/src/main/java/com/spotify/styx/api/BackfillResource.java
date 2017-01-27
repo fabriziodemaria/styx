@@ -21,6 +21,9 @@
 package com.spotify.styx.api;
 
 import static com.spotify.styx.api.Api.Version.V1;
+import static com.spotify.styx.util.ParameterUtil.rangeOfInstants;
+import static com.spotify.styx.util.ParameterUtil.toParameter;
+import static com.spotify.styx.util.ParameterUtil.truncateInstant;
 import static java.util.stream.Collectors.toList;
 
 import com.google.common.base.Throwables;
@@ -32,6 +35,8 @@ import com.spotify.apollo.entity.JacksonEntityCodec;
 import com.spotify.apollo.route.AsyncHandler;
 import com.spotify.apollo.route.Middleware;
 import com.spotify.apollo.route.Route;
+import com.spotify.styx.api.cli.RunStateDataPayload;
+import com.spotify.styx.api.cli.RunStateDataPayload.RunStateData;
 import com.spotify.styx.model.Backfill;
 import com.spotify.styx.model.BackfillBuilder;
 import com.spotify.styx.model.BackfillInput;
@@ -40,10 +45,13 @@ import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowId;
 import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.serialization.Json;
+import com.spotify.styx.state.RunState;
+import com.spotify.styx.state.StateData;
 import com.spotify.styx.storage.Storage;
-import com.spotify.styx.util.ParameterUtil;
 import com.spotify.styx.util.RandomGenerator;
+import com.spotify.styx.util.ReplayEvents;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -76,7 +84,7 @@ public final class BackfillResource {
             "POST", BASE,
             rc -> this::postBackfill),
         Route.with(
-            em.serializerResponse(Backfill.class),
+            em.serializerResponse(BackfillStatusPayload.class),
             "GET", BASE + "/<bid>",
             rc -> getBackfill(arg("bid", rc))),
         Route.with(
@@ -113,11 +121,47 @@ public final class BackfillResource {
     return BackfillsPayload.create(backfills);
   }
 
-  private Response<Backfill> getBackfill(String id) {
+  private Response<BackfillStatusPayload> getBackfill(String id) {
     try {
-      Optional<Backfill> backfill = storage.backfill(id);
-      if (backfill.isPresent()) {
-        return Response.forPayload(backfill.get());
+      Optional<Backfill> backfillOpt = storage.backfill(id);
+      if (backfillOpt.isPresent()) {
+        final Backfill backfill = backfillOpt.get();
+        final List<RunStateData> processedStates;
+        final List<RunStateData> waitingStates;
+
+        final List<Instant> processedInstants = rangeOfInstants(
+              backfill.start(), backfill.nextTrigger(), backfill.partitioning());
+        processedStates = processedInstants.stream()
+            .map(instant -> {
+              final WorkflowInstance wfi = WorkflowInstance
+                  .create(backfill.workflowId(), toParameter(backfill.partitioning(), instant));
+              Optional<RunState> restoredStateOpt = ReplayEvents.getBackfillRunState(
+                  wfi,
+                  storage,
+                  backfill.id());
+              if (restoredStateOpt.isPresent()) {
+                RunState state = restoredStateOpt.get();
+                return RunStateData.create(state.workflowInstance(), state.state().name(), state.data());
+              } else {
+                return RunStateData.create(wfi, "UNKNOWN", StateData.zero());
+              }
+            })
+            .collect(toList());
+
+        final List<Instant> waitingInstants = rangeOfInstants(
+            backfill.nextTrigger(), backfill.end(), backfill.partitioning());
+        waitingStates = waitingInstants.stream()
+            .map(instant -> {
+              final WorkflowInstance wfi = WorkflowInstance.create(
+                  backfill.workflowId(), toParameter(backfill.partitioning(), instant));
+              return RunStateData.create(wfi, "WAITING", StateData.zero());
+            })
+            .collect(toList());
+
+        return Response.forPayload(
+            BackfillStatusPayload.create(backfill, RunStateDataPayload.create(
+                    Stream.concat(processedStates.stream(), waitingStates.stream())
+                        .collect(toList()))));
       }
       return Response.forStatus(Status.NOT_FOUND);
     } catch (IOException e) {
@@ -160,19 +204,19 @@ public final class BackfillResource {
       throw Throwables.propagate(e);
     }
 
-    if (ParameterUtil.truncateInstant(input.start(), partitioning) != input.start()) {
+    if (truncateInstant(input.start(), partitioning) != input.start()) {
       return Response.forStatus(
           Status.BAD_REQUEST.withReasonPhrase("start parameter not aligned with partitioning"));
     }
 
-    if (ParameterUtil.truncateInstant(input.end(), partitioning) != input.end()) {
+    if (truncateInstant(input.end(), partitioning) != input.end()) {
       return Response.forStatus(
           Status.BAD_REQUEST.withReasonPhrase("end parameter not aligned with partitioning"));
     }
 
     final List<WorkflowInstance> alreadyActive =
-        ParameterUtil.rangeOfInstants(input.start(), input.end(), partitioning).stream()
-            .map(instant -> WorkflowInstance.create(workflowId, ParameterUtil.toParameter(partitioning, instant)))
+        rangeOfInstants(input.start(), input.end(), partitioning).stream()
+            .map(instant -> WorkflowInstance.create(workflowId, toParameter(partitioning, instant)))
             .filter(activeWorkflowInstances::contains)
             .collect(toList());
 
