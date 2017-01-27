@@ -39,10 +39,12 @@ import com.spotify.apollo.Environment;
 import com.spotify.apollo.Response;
 import com.spotify.apollo.StatusType;
 import com.spotify.styx.model.Backfill;
+import com.spotify.styx.model.BackfillInput;
 import com.spotify.styx.model.DataEndpoint;
 import com.spotify.styx.model.Partitioning;
 import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowId;
+import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.serialization.Json;
 import com.spotify.styx.storage.AggregateStorage;
 import java.net.URI;
@@ -185,6 +187,43 @@ public class BackfillResourceTest extends VersionedApiTest {
     Backfill postedBackfill = Json.OBJECT_MAPPER.readValue(
         response.payload().get().toByteArray(), Backfill.class);
     assertThat(postedBackfill.id().matches("backfill-[\\d-]+"), is(true));
+  }
+
+  @Test
+  public void shouldFailOnMisalignedRange() throws Exception {
+    sinceVersion(Api.Version.V1);
+
+    final String json = "{\"start\":\"2017-01-01T00:00:01Z\"," +
+                        "\"end\":\"2017-02-01T00:00:00Z\"," +
+                        "\"component\":\"component\"," +
+                        "\"workflow\":\"workflow2\","+
+                        "\"concurrency\":1}";
+
+    Response<ByteString> response =
+        awaitResponse(serviceHelper.request("POST", path(""), ByteString.encodeUtf8(json)));
+
+    assertThat(response.status().reasonPhrase(),
+               response, hasStatus(belongsToFamily(StatusType.Family.CLIENT_ERROR)));
+  }
+
+  @Test
+  public void shouldFailOnAlreadyActiveWithinRange() throws Exception {
+    sinceVersion(Api.Version.V1);
+
+    final BackfillInput backfillInput = BackfillInput.create(
+        BACKFILL_1.start(),
+        BACKFILL_1.end(),
+        BACKFILL_1.workflowId().componentId(),
+        BACKFILL_1.workflowId().endpointId(),
+        BACKFILL_1.concurrency());
+
+    storage.writeActiveState(WorkflowInstance.create(BACKFILL_1.workflowId(), "2017-01-01T01"), 0L);
+
+    Response<ByteString> response =
+        awaitResponse(serviceHelper.request("POST", path(""), Json.serialize(backfillInput)));
+
+    assertThat(response.status().reasonPhrase(),
+               response, hasStatus(belongsToFamily(StatusType.Family.CLIENT_ERROR)));
   }
 
   @Test

@@ -38,13 +38,17 @@ import com.spotify.styx.model.BackfillInput;
 import com.spotify.styx.model.Partitioning;
 import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowId;
+import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.serialization.Json;
 import com.spotify.styx.storage.Storage;
+import com.spotify.styx.util.ParameterUtil;
 import com.spotify.styx.util.RandomGenerator;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import okio.ByteString;
 
@@ -68,7 +72,7 @@ public final class BackfillResource {
             "GET", BASE,
             this::getBackfills),
         Route.with(
-            em.direct(BackfillInput.class, Backfill.class),
+            em.response(BackfillInput.class, Backfill.class),
             "POST", BASE,
             rc -> this::postBackfill),
         Route.with(
@@ -132,19 +136,48 @@ public final class BackfillResource {
     return Response.ok();
   }
 
-  private Backfill postBackfill(BackfillInput input) {
+  private Response<Backfill> postBackfill(BackfillInput input) {
     final BackfillBuilder builder = Backfill.newBuilder();
 
     final String id = RandomGenerator.DEFAULT.generateUniqueId("backfill");
     final Partitioning partitioning;
 
     final WorkflowId workflowId = WorkflowId.create(input.component(), input.workflow());
+    final Set<WorkflowInstance> activeWorkflowInstances;
     try {
-      final Workflow workflow = storage.workflow(workflowId)
-          .orElseThrow(() -> new RuntimeException("workflow not found"));
-      partitioning = workflow.schedule().partitioning();
+      activeWorkflowInstances = storage.readActiveWorkflowInstances(input.component()).keySet();
+      final Optional<Workflow> workflowOpt = storage.workflow(workflowId);
+      if (!workflowOpt.isPresent()) {
+        return Response.forStatus(Status.NOT_FOUND.withReasonPhrase("workflow not found"));
+      }
+      partitioning = workflowOpt.get().schedule().partitioning();
     } catch (Exception e) {
       throw Throwables.propagate(e);
+    }
+
+    if (ParameterUtil.truncateInstant(input.start(), partitioning) != input.start()) {
+      return Response.forStatus(
+          Status.BAD_REQUEST.withReasonPhrase("start parameter not aligned with partitioning"));
+    }
+
+    if (ParameterUtil.truncateInstant(input.end(), partitioning) != input.end()) {
+      return Response.forStatus(
+          Status.BAD_REQUEST.withReasonPhrase("end parameter not aligned with partitioning"));
+    }
+
+    final List<WorkflowInstance> alreadyActive =
+        ParameterUtil.rangeOfInstants(input.start(), input.end(), partitioning).stream()
+            .map(instant -> WorkflowInstance.create(workflowId, ParameterUtil.toParameter(partitioning, instant)))
+            .filter(activeWorkflowInstances::contains)
+            .collect(toList());
+
+    if (!alreadyActive.isEmpty()) {
+      final String alreadyActiveMessage = alreadyActive.stream()
+          .map(WorkflowInstance::parameter)
+          .collect(Collectors.joining(", "));
+      return Response.forStatus(
+          Status.CONFLICT
+              .withReasonPhrase("these partitions are already active: " + alreadyActiveMessage));
     }
 
     builder
@@ -165,7 +198,7 @@ public final class BackfillResource {
       throw Throwables.propagate(e);
     }
 
-    return backfill;
+    return Response.forPayload(backfill);
   }
 
   private Response<Backfill> updateBackfill(String id, Backfill backfill) {

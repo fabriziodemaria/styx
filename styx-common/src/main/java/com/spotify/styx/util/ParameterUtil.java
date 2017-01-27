@@ -101,6 +101,21 @@ public final class ParameterUtil {
     return Instant.from(ISO_LOCAL_DATE_HOUR.parse(dateHour));
   }
 
+  public static String toParameter(Partitioning partitioning, Instant instant) {
+    switch (partitioning) {
+      case DAYS:
+      case WEEKS:
+        return ParameterUtil.formatDate(instant);
+      case HOURS:
+        return ParameterUtil.formatDateHour(instant);
+      case MONTHS:
+        return ParameterUtil.formatMonth(instant);
+
+      default:
+        throw new IllegalArgumentException("Unknown partitioning " + partitioning);
+    }
+  }
+
   /**
    * Given a {@link Workflow} with certain frequency / {@link Partitioning},
    * it returns an instant that is 1 {@link TemporalUnit} less.
