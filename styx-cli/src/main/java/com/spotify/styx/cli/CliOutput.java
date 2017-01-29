@@ -21,7 +21,7 @@
 package com.spotify.styx.cli;
 
 import com.google.auto.value.AutoValue;
-import com.spotify.styx.api.cli.ActiveStatesPayload;
+import com.spotify.styx.api.cli.RunStateDataPayload;
 import com.spotify.styx.model.Backfill;
 import java.util.List;
 
@@ -30,7 +30,7 @@ import java.util.List;
  */
 interface CliOutput {
 
-  void printActiveStates(ActiveStatesPayload activeStatesPayload);
+  void printStates(RunStateDataPayload runStateDataPayload);
 
   void printEvents(List<EventInfo> eventInfos);
 

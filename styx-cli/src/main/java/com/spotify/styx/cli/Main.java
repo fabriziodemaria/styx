@@ -36,7 +36,7 @@ import com.spotify.apollo.core.Services;
 import com.spotify.apollo.environment.ApolloEnvironmentModule;
 import com.spotify.apollo.http.client.HttpClientModule;
 import com.spotify.styx.api.BackfillsPayload;
-import com.spotify.styx.api.cli.ActiveStatesPayload;
+import com.spotify.styx.api.cli.RunStateDataPayload;
 import com.spotify.styx.model.Backfill;
 import com.spotify.styx.model.BackfillInput;
 import com.spotify.styx.model.Event;
@@ -288,7 +288,7 @@ public final class Main {
         Request.forUri(uri).withTtl(Duration.ofSeconds(TTL_REQUEST)),
         bytes -> {
           try {
-            cliOutput.printActiveStates(OBJECT_MAPPER.readValue(bytes, ActiveStatesPayload.class));
+            cliOutput.printStates(OBJECT_MAPPER.readValue(bytes, RunStateDataPayload.class));
           } catch (IOException e) {
             throw Throwables.propagate(e);
           }
