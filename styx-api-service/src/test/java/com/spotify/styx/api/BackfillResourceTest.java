@@ -35,18 +35,26 @@ import com.google.cloud.datastore.KeyQuery;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.testing.LocalDatastoreHelper;
+import com.google.common.base.Throwables;
 import com.spotify.apollo.Environment;
 import com.spotify.apollo.Response;
 import com.spotify.apollo.StatusType;
 import com.spotify.styx.model.Backfill;
 import com.spotify.styx.model.BackfillInput;
 import com.spotify.styx.model.DataEndpoint;
+import com.spotify.styx.model.Event;
 import com.spotify.styx.model.Partitioning;
+import com.spotify.styx.model.SequenceEvent;
 import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowId;
 import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.serialization.Json;
+import com.spotify.styx.state.Trigger;
 import com.spotify.styx.storage.AggregateStorage;
+import com.spotify.styx.storage.BigtableMocker;
+import com.spotify.styx.storage.BigtableStorage;
+import com.spotify.styx.testdata.TestData;
+import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
@@ -63,9 +71,10 @@ import org.junit.Test;
 public class BackfillResourceTest extends VersionedApiTest {
 
   private static LocalDatastoreHelper localDatastore;
+  private Connection bigtable = setupBigTableMockTable();
 
   private AggregateStorage storage = new AggregateStorage(
-      mock(Connection.class),
+      bigtable,
       localDatastore.options().service(),
       Duration.ZERO);
 
@@ -162,11 +171,23 @@ public class BackfillResourceTest extends VersionedApiTest {
   public void shouldGetBackfillStatus() throws Exception {
     sinceVersion(Api.Version.V1);
 
+    WorkflowInstance wfi = WorkflowInstance.create(BACKFILL_1.workflowId(), "2017-01-01T01");
+    storage.storeBackfill(BACKFILL_1.builder().nextTrigger(Instant.parse("2017-01-01T02:00:00Z")).build());
+    storage.writeEvent(SequenceEvent.create(Event.triggerExecution(wfi, Trigger.backfill("backfill-1")), 1L, 1L));
+    storage.writeEvent(SequenceEvent.create(Event.dequeue(wfi),                                          2L, 2L));
+    storage.writeEvent(SequenceEvent.create(Event.submit(wfi, TestData.EXECUTION_DESCRIPTION),           3L, 3L));
+    storage.writeEvent(SequenceEvent.create(Event.submitted(wfi, "exec-1"),                              4L, 4L));
+    storage.writeEvent(SequenceEvent.create(Event.started(wfi),                                          5L, 5L));
+    storage.writeActiveState(wfi, 5L);
+
     Response<ByteString> response =
         awaitResponse(serviceHelper.request("GET", path("/" + BACKFILL_1.id())));
 
     assertThat(response, hasStatus(belongsToFamily(StatusType.Family.SUCCESSFUL)));
     assertJson(response, "backfill.id", equalTo(BACKFILL_1.id()));
+    assertJson(response, "statuses.active_states[0].state", equalTo("UNKNOWN"));
+    assertJson(response, "statuses.active_states[1].state", equalTo("RUNNING"));
+    assertJson(response, "statuses.active_states[2].state", equalTo("WAITING"));
     assertJson(response, "statuses.active_states[23].state", equalTo("WAITING"));
     assertJson(response, "statuses.active_states", hasSize(24));
   }
@@ -277,5 +298,18 @@ public class BackfillResourceTest extends VersionedApiTest {
 
     assertThat(response.status().reasonPhrase(),
                response, hasStatus(belongsToFamily(StatusType.Family.CLIENT_ERROR)));
+  }
+
+  private Connection setupBigTableMockTable() {
+    Connection bigtable = mock(Connection.class);
+    try {
+      new BigtableMocker(bigtable)
+          .setNumFailures(0)
+          .setupTable(BigtableStorage.EVENTS_TABLE_NAME)
+          .finalizeMocking();
+    } catch (IOException e) {
+      throw Throwables.propagate(e);
+    }
+    return bigtable;
   }
 }
