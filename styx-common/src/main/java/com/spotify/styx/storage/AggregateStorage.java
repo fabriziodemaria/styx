@@ -201,17 +201,7 @@ public class AggregateStorage implements Storage {
   }
 
   @Override
-  public List<Backfill> backfillsForIds(String... ids) throws IOException {
-    return datastoreStorage.getBackfills(ids);
-  }
-
-  @Override
   public Optional<Backfill> backfill(String id) throws IOException {
     return datastoreStorage.getBackfill(id);
-  }
-
-  @Override
-  public void deleteBackfill(String id) throws IOException {
-    datastoreStorage.deleteBackfill(id);
   }
 }

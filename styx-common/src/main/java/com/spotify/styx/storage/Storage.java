@@ -248,11 +248,7 @@ public interface Storage {
 
   List<Backfill> backfills() throws IOException;
 
-  List<Backfill> backfillsForIds(String... ids) throws IOException;
-
   Optional<Backfill> backfill(String id) throws IOException;
 
   void storeBackfill(Backfill backfill) throws IOException;
-
-  void deleteBackfill(String id) throws IOException;
 }

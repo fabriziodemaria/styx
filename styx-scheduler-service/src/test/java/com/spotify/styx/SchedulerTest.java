@@ -148,6 +148,30 @@ public class SchedulerTest {
   }
 
   @Test
+  public void shouldNotTriggerHaltedBackfills() throws Exception {
+    setUp(5);
+    final Workflow workflow = workflowUsingResources(WORKFLOW_ID1);
+    initWorkflow(workflow);
+    when(storage.backfills()).thenReturn(Collections.singletonList(BACKFILL.builder().halted(true).build()));
+
+    scheduler.tick();
+
+    verifyZeroInteractions(triggerListener);
+  }
+
+  @Test
+  public void shouldNotTriggerCompletedBackfills() throws Exception {
+    setUp(5);
+    final Workflow workflow = workflowUsingResources(WORKFLOW_ID1);
+    initWorkflow(workflow);
+    when(storage.backfills()).thenReturn(Collections.singletonList(BACKFILL.builder().completed(true).build()));
+
+    scheduler.tick();
+
+    verifyZeroInteractions(triggerListener);
+  }
+
+  @Test
   public void shouldNotTriggerBackfillsWithMissingWorkflows() throws Exception {
     setUp(5);
     when(storage.backfills()).thenReturn(Collections.singletonList(BACKFILL));

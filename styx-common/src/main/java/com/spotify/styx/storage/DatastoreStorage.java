@@ -51,15 +51,12 @@ import com.spotify.styx.util.ResourceNotFoundException;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -95,6 +92,7 @@ class DatastoreStorage {
   public static final String PROPERTY_NEXT_TRIGGER = "nextTrigger";
   public static final String PROPERTY_PARTITIONING = "partitioning";
   public static final String PROPERTY_COMPLETED = "completed";
+  public static final String PROPERTY_HALTED = "halted";
 
   public static final String KEY_GLOBAL_CONFIG = "styxGlobal";
 
@@ -554,17 +552,6 @@ class DatastoreStorage {
     return resources.build();
   }
 
-  List<Backfill> getBackfills(String[] ids) {
-    final KeyFactory keyFactory = datastore.newKeyFactory().kind(KIND_BACKFILL);
-    final List<Key> keys = Arrays.stream(ids).map(keyFactory::newKey).collect(Collectors.toList());
-    final Iterator<Entity> results = datastore.get(keys);
-    final ImmutableList.Builder<Backfill> resources = ImmutableList.builder();
-    while (results.hasNext()) {
-      resources.add(entityToBackfill(results.next()));
-    }
-    return resources.build();
-  }
-
   private Backfill entityToBackfill(Entity entity) {
     final WorkflowId workflowId = WorkflowId.create(entity.getString(PROPERTY_COMPONENT),
                                                     entity.getString(PROPERTY_WORKFLOW));
@@ -579,6 +566,7 @@ class DatastoreStorage {
         .nextTrigger(datetimeToInstant(entity.getDateTime(PROPERTY_NEXT_TRIGGER)))
         .partitioning(Partitioning.valueOf(entity.getString(PROPERTY_PARTITIONING)))
         .completed(entity.getBoolean(PROPERTY_COMPLETED))
+        .halted(entity.getBoolean(PROPERTY_HALTED))
         .build();
   }
 
@@ -598,16 +586,9 @@ class DatastoreStorage {
         .set(PROPERTY_RESOURCE, backfill.resource())
         .set(PROPERTY_PARTITIONING, backfill.partitioning().name())
         .set(PROPERTY_NEXT_TRIGGER, instantToDatetime(backfill.nextTrigger()))
-        .set(PROPERTY_COMPLETED, backfill.completed());
+        .set(PROPERTY_COMPLETED, backfill.completed())
+        .set(PROPERTY_HALTED, backfill.halted());
 
     return builder.build();
-  }
-
-  void deleteBackfill(String id) throws IOException {
-    final Key key = datastore.newKeyFactory().kind(KIND_BACKFILL).newKey(id);
-    storeWithRetries(() -> {
-      datastore.delete(key);
-      return null;
-    });
   }
 }

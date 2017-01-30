@@ -225,6 +225,7 @@ public class Scheduler {
     try {
       backfills = storage.backfills().stream()
           .filter(backfill -> !backfill.completed())
+          .filter(backfill -> !backfill.halted())
           .collect(toList());
     } catch (IOException e) {
       LOG.warn("Failed to get backfills", e);

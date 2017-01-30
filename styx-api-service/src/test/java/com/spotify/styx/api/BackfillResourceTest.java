@@ -259,7 +259,7 @@ public class BackfillResourceTest extends VersionedApiTest {
     assertThat(response.status().reasonPhrase(),
                response, hasStatus(belongsToFamily(StatusType.Family.SUCCESSFUL)));
 
-    assertThat(storage.backfill(BACKFILL_1.id()).isPresent(), equalTo(false));
+    assertThat(storage.backfill(BACKFILL_1.id()).get().halted(), equalTo(true));
   }
 
   @Test

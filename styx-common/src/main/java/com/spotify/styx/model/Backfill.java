@@ -56,6 +56,9 @@ public interface Backfill {
   @JsonProperty
   boolean completed();
 
+  @JsonProperty
+  boolean halted();
+
   BackfillBuilder builder();
 
   static BackfillBuilder newBuilder() {

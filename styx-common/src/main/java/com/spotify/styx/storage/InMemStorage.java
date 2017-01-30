@@ -36,7 +36,6 @@ import com.spotify.styx.util.ResourceNotFoundException;
 import com.spotify.styx.util.WorkflowStateUtil;
 import java.io.IOException;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -219,11 +218,6 @@ public class InMemStorage implements Storage {
   }
 
   @Override
-  public List<Backfill> backfillsForIds(String... ids) throws IOException {
-    return Arrays.stream(ids).map(backfillStore::get).collect(Collectors.toList());
-  }
-
-  @Override
   public Optional<Backfill> backfill(String id) throws IOException {
     return Optional.ofNullable(backfillStore.get(id));
   }
@@ -231,11 +225,6 @@ public class InMemStorage implements Storage {
   @Override
   public void storeBackfill(Backfill backfill) throws IOException {
     backfillStore.put(backfill.id(), backfill);
-  }
-
-  @Override
-  public void deleteBackfill(String id) throws IOException {
-    backfillStore.remove(id);
   }
 
   @Override

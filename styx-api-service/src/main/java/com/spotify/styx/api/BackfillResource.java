@@ -127,11 +127,16 @@ public final class BackfillResource {
 
   private Response<Void> haltBackfill(String id) {
     try {
-      storage.deleteBackfill(id);
+      final Optional<Backfill> backfillOptional = storage.backfill(id);
+      if (backfillOptional.isPresent()) {
+        storage.storeBackfill(backfillOptional.get().builder().halted(true).build());
+      } else {
+        return Response.forStatus(Status.NOT_FOUND.withReasonPhrase("backfill not found"));
+      }
     } catch (IOException e) {
       return Response.forStatus(
           Status.INTERNAL_SERVER_ERROR
-              .withReasonPhrase("could not delete backfill: " + e.getMessage()));
+              .withReasonPhrase("could not halt backfill: " + e.getMessage()));
     }
     return Response.ok();
   }
@@ -188,7 +193,8 @@ public final class BackfillResource {
         .end(input.end())
         .resource(id)
         .partitioning(partitioning)
-        .nextTrigger(input.start());
+        .nextTrigger(input.start())
+        .halted(false);
 
     final Backfill backfill = builder.build();
 
