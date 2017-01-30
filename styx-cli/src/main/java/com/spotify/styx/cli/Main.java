@@ -35,6 +35,7 @@ import com.spotify.apollo.core.Service;
 import com.spotify.apollo.core.Services;
 import com.spotify.apollo.environment.ApolloEnvironmentModule;
 import com.spotify.apollo.http.client.HttpClientModule;
+import com.spotify.styx.api.BackfillStatusPayload;
 import com.spotify.styx.api.BackfillsPayload;
 import com.spotify.styx.api.cli.RunStateDataPayload;
 import com.spotify.styx.model.Backfill;
@@ -237,14 +238,14 @@ public final class Main {
     final String id = namespace.getString(parser.backfillShowId.getDest());
     final Request request = Request.forUri(apiUrl("backfills", id));
     client.accept(request, bytes -> {
-      final Backfill backfill;
+      final BackfillStatusPayload backfillStatus;
       try {
-        backfill = OBJECT_MAPPER.readValue(bytes, Backfill.class);
+        backfillStatus = OBJECT_MAPPER.readValue(bytes, BackfillStatusPayload.class);
       } catch (IOException e) {
         e.printStackTrace();
         return;
       }
-      cliOutput.printBackfill(backfill);
+      cliOutput.printBackfill(backfillStatus);
     });
   }
 

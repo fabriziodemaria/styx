@@ -1,6 +1,6 @@
 /*-
  * -\-\-
- * Spotify Styx CLI
+ * Spotify Styx Common
  * --
  * Copyright (C) 2016 Spotify AB
  * --
@@ -18,35 +18,29 @@
  * -/-/-
  */
 
-package com.spotify.styx.cli;
+package com.spotify.styx.api;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.auto.value.AutoValue;
-import com.spotify.styx.api.BackfillStatusPayload;
 import com.spotify.styx.api.cli.RunStateDataPayload;
 import com.spotify.styx.model.Backfill;
-import java.util.List;
 
-/**
- * Cli printing interface
- */
-interface CliOutput {
+@AutoValue
+@JsonIgnoreProperties(ignoreUnknown = true)
+public abstract class BackfillStatusPayload {
 
-  void printStates(RunStateDataPayload runStateDataPayload);
+  @JsonProperty
+  public abstract Backfill backfill();
 
-  void printEvents(List<EventInfo> eventInfos);
+  @JsonProperty
+  public abstract RunStateDataPayload statuses();
 
-  void printBackfill(Backfill backfill);
-
-  void printBackfill(BackfillStatusPayload backfillStatusPayload);
-
-  @AutoValue
-  abstract class EventInfo {
-    abstract long timestamp();
-    abstract String name();
-    abstract String info();
-
-    public static EventInfo create(long ts, String eventName, String eventInfo) {
-      return new AutoValue_CliOutput_EventInfo(ts, eventName, eventInfo);
-    }
+  @JsonCreator
+  static BackfillStatusPayload create(
+      @JsonProperty("backfill") Backfill backfill,
+      @JsonProperty("statuses") RunStateDataPayload statuses) {
+    return new AutoValue_BackfillStatusPayload(backfill, statuses);
   }
 }
