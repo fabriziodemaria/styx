@@ -88,6 +88,6 @@ class PlainCliOutput implements CliOutput {
 
   @Override
   public void printBackfill(BackfillPayload backfillStatusPayload) {
-    System.out.println(backfillStatusPayload);
+    printStates(backfillStatusPayload.statuses().get());
   }
 }

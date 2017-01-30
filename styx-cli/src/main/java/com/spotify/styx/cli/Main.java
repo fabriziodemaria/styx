@@ -27,6 +27,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.api.client.util.Lists;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.spotify.apollo.Client;
@@ -41,8 +42,13 @@ import com.spotify.styx.api.cli.RunStateDataPayload;
 import com.spotify.styx.model.Backfill;
 import com.spotify.styx.model.BackfillInput;
 import com.spotify.styx.model.Event;
+import com.spotify.styx.model.ExecutionDescription;
+import com.spotify.styx.model.Partitioning;
 import com.spotify.styx.model.WorkflowId;
 import com.spotify.styx.model.WorkflowInstance;
+import com.spotify.styx.state.Message;
+import com.spotify.styx.state.StateData;
+import com.spotify.styx.state.Trigger;
 import com.spotify.styx.util.EventUtil;
 import com.spotify.styx.util.ParameterUtil;
 import java.io.IOException;
@@ -51,8 +57,10 @@ import java.net.URLEncoder;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import net.sourceforge.argparse4j.ArgumentParsers;
@@ -112,6 +120,52 @@ public final class Main {
     final String apiHost;
 
     try {
+      Backfill BACKFILL_1 = Backfill.newBuilder()
+          .id("backfill-1")
+          .start(Instant.parse("2017-01-01T00:00:00Z"))
+          .end(Instant.parse("2017-01-01T16:00:00Z"))
+          .workflowId(WorkflowId.create("component", "workflow1"))
+          .concurrency(1)
+          .resource("backfill-1")
+          .nextTrigger(Instant.parse("2017-01-01T07:00:00Z"))
+          .partitioning(Partitioning.HOURS)
+          .build();
+
+      List<RunStateDataPayload.RunStateData> list = Lists.newArrayList();
+      list.add(RunStateDataPayload.RunStateData.create(WorkflowInstance.create(WorkflowId.create("component", "workflow1"), "2017-01-01T00"), "UNKNOWN", StateData.zero()));
+      list.add(RunStateDataPayload.RunStateData.create(WorkflowInstance.create(WorkflowId.create("component", "workflow1"), "2017-01-01T01"), "UNKNOWN", StateData.zero()));
+      list.add(RunStateDataPayload.RunStateData.create(WorkflowInstance.create(WorkflowId.create("component", "workflow1"), "2017-01-01T02"), "UNKNOWN", StateData.zero()));
+      list.add(RunStateDataPayload.RunStateData.create(WorkflowInstance.create(WorkflowId.create("component", "workflow1"), "2017-01-01T03"), "UNKNOWN", StateData.zero()));
+      list.add(RunStateDataPayload.RunStateData.create(WorkflowInstance.create(WorkflowId.create("component", "workflow1"), "2017-01-01T04"), "RUNNING", StateData.zero().builder()
+          .trigger(Trigger.backfill("backfill-1"))
+          .executionId("exec-1")
+          .executionDescription(ExecutionDescription.create("docker-image-name", ImmutableList.of("docker-args"), Optional.empty(), Optional.empty()))
+          .build()));
+      list.add(RunStateDataPayload.RunStateData.create(WorkflowInstance.create(WorkflowId.create("component", "workflow1"), "2017-01-01T05"), "ERROR", StateData.zero().builder()
+          .lastExit(30)
+          .tries(50)
+          .addMessage(Message.create(Message.MessageLevel.ERROR, "Exit code: 30"))
+          .trigger(Trigger.backfill("backfill-1")).executionId("exec-50")
+          .executionDescription(ExecutionDescription.create("docker-image-name", ImmutableList.of("docker-args"), Optional.empty(), Optional.empty()))
+          .build()));
+      list.add(RunStateDataPayload.RunStateData.create(WorkflowInstance.create(WorkflowId.create("component", "workflow1"), "2017-01-01T06"), "DONE", StateData.zero().builder()
+          .lastExit(0)
+          .tries(1)
+          .addMessage(Message.create(Message.MessageLevel.INFO, "Exit code: 0"))
+          .trigger(Trigger.backfill("backfill-1")).executionId("exec-1")
+          .executionDescription(ExecutionDescription.create("docker-image-name", ImmutableList.of("docker-args"), Optional.empty(), Optional.empty()))
+          .build()));
+      list.add(RunStateDataPayload.RunStateData.create(WorkflowInstance.create(WorkflowId.create("component", "workflow1"), "2017-01-01T07"), "WAITING", StateData.zero()));
+      list.add(RunStateDataPayload.RunStateData.create(WorkflowInstance.create(WorkflowId.create("component", "workflow1"), "2017-01-01T08"), "WAITING", StateData.zero()));
+      list.add(RunStateDataPayload.RunStateData.create(WorkflowInstance.create(WorkflowId.create("component", "workflow1"), "2017-01-01T09"), "WAITING", StateData.zero()));
+      list.add(RunStateDataPayload.RunStateData.create(WorkflowInstance.create(WorkflowId.create("component", "workflow1"), "2017-01-01T10"), "WAITING", StateData.zero()));
+      list.add(RunStateDataPayload.RunStateData.create(WorkflowInstance.create(WorkflowId.create("component", "workflow1"), "2017-01-01T11"), "WAITING", StateData.zero()));
+      list.add(RunStateDataPayload.RunStateData.create(WorkflowInstance.create(WorkflowId.create("component", "workflow1"), "2017-01-01T12"), "WAITING", StateData.zero()));
+      list.add(RunStateDataPayload.RunStateData.create(WorkflowInstance.create(WorkflowId.create("component", "workflow1"), "2017-01-01T13"), "WAITING", StateData.zero()));
+      list.add(RunStateDataPayload.RunStateData.create(WorkflowInstance.create(WorkflowId.create("component", "workflow1"), "2017-01-01T14"), "WAITING", StateData.zero()));
+      list.add(RunStateDataPayload.RunStateData.create(WorkflowInstance.create(WorkflowId.create("component", "workflow1"), "2017-01-01T15"), "WAITING", StateData.zero()));
+      PrettyCliOutput cli = new PrettyCliOutput();
+      cli.printBackfill(BackfillPayload.create(BACKFILL_1, Optional.of(RunStateDataPayload.create(list))));
       namespace = parser.parser.parseArgs(args);
       apiHost = namespace.getString(parser.host.getDest());
       if (apiHost == null) {
