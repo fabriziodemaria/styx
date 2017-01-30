@@ -159,14 +159,16 @@ public class BackfillResourceTest extends VersionedApiTest {
   }
 
   @Test
-  public void shouldGetBackfill() throws Exception {
+  public void shouldGetBackfillStatus() throws Exception {
     sinceVersion(Api.Version.V1);
 
     Response<ByteString> response =
         awaitResponse(serviceHelper.request("GET", path("/" + BACKFILL_1.id())));
 
     assertThat(response, hasStatus(belongsToFamily(StatusType.Family.SUCCESSFUL)));
-    assertJson(response, "id", equalTo(BACKFILL_1.id()));
+    assertJson(response, "backfill.id", equalTo(BACKFILL_1.id()));
+    assertJson(response, "statuses.active_states[23].state", equalTo("WAITING"));
+    assertJson(response, "statuses.active_states", hasSize(24));
   }
 
   @Test

@@ -22,6 +22,7 @@ package com.spotify.styx.cli;
 
 import static com.spotify.styx.cli.CliUtil.formatTimestamp;
 
+import com.spotify.styx.api.BackfillStatusPayload;
 import com.spotify.styx.api.cli.RunStateDataPayload;
 import com.spotify.styx.model.Backfill;
 import com.spotify.styx.model.WorkflowId;
@@ -83,5 +84,10 @@ class PlainCliOutput implements CliOutput {
   @Override
   public void printBackfill(Backfill backfill) {
     System.out.println(backfill);
+  }
+
+  @Override
+  public void printBackfill(BackfillStatusPayload backfillStatusPayload) {
+    System.out.println(backfillStatusPayload);
   }
 }
