@@ -26,7 +26,6 @@ import static com.spotify.styx.util.ParameterUtil.toParameter;
 import static com.spotify.styx.util.ParameterUtil.truncateInstant;
 import static java.util.stream.Collectors.toList;
 
-import com.google.api.client.util.Lists;
 import com.google.common.base.Throwables;
 import com.spotify.apollo.RequestContext;
 import com.spotify.apollo.Response;
@@ -130,14 +129,8 @@ public final class BackfillResource {
         final List<RunStateData> processedStates;
         final List<RunStateData> waitingStates;
 
-        final List<Instant> processedInstants;
-        if (backfill.nextTrigger().isAfter(backfill.start())) {
-          processedInstants = rangeOfInstants(
+        final List<Instant> processedInstants = rangeOfInstants(
               backfill.start(), backfill.nextTrigger(), backfill.partitioning());
-        } else {
-          processedInstants = Lists.newArrayList();
-        }
-
         processedStates = processedInstants.stream()
             .map(instant -> {
               final WorkflowInstance wfi = WorkflowInstance
@@ -155,19 +148,15 @@ public final class BackfillResource {
             })
             .collect(toList());
 
-        if (backfill.nextTrigger().isBefore(backfill.end())) {
-          final List<Instant> waitingInstants = rangeOfInstants(
-              backfill.nextTrigger(), backfill.end(), backfill.partitioning());
-          waitingStates = waitingInstants.stream()
-              .map(instant -> {
-                final WorkflowInstance wfi = WorkflowInstance.create(
-                    backfill.workflowId(), toParameter(backfill.partitioning(), instant));
-                return RunStateData.create(wfi, "WAITING", StateData.zero());
-              })
-              .collect(toList());
-        } else {
-          waitingStates = Lists.newArrayList();
-        }
+        final List<Instant> waitingInstants = rangeOfInstants(
+            backfill.nextTrigger(), backfill.end(), backfill.partitioning());
+        waitingStates = waitingInstants.stream()
+            .map(instant -> {
+              final WorkflowInstance wfi = WorkflowInstance.create(
+                  backfill.workflowId(), toParameter(backfill.partitioning(), instant));
+              return RunStateData.create(wfi, "WAITING", StateData.zero());
+            })
+            .collect(toList());
 
         return Response.forPayload(
             BackfillStatusPayload.create(backfillOpt.get(), RunStateDataPayload.create(
