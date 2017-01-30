@@ -159,7 +159,7 @@ public final class BackfillResource {
             .collect(toList());
 
         return Response.forPayload(
-            BackfillStatusPayload.create(backfillOpt.get(), RunStateDataPayload.create(
+            BackfillStatusPayload.create(backfill, RunStateDataPayload.create(
                     Stream.concat(processedStates.stream(), waitingStates.stream())
                         .collect(toList()))));
       }
