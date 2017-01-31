@@ -104,6 +104,7 @@ public final class BackfillResource {
 
   private BackfillsPayload getBackfills(RequestContext requestContext) {
     final Optional<String> componentOpt = requestContext.request().parameter("component");
+    final List<BackfillPayload> backfillPayloads;
     List<Backfill> backfills;
     try {
       backfills = storage.backfills();
@@ -118,52 +119,25 @@ public final class BackfillResource {
                   backfill.workflowId().componentId().equals(component))
           .collect(toList());
     }
-    return BackfillsPayload.create(backfills);
+
+    backfillPayloads = backfills.stream()
+        .map(backfill -> BackfillPayload.create(
+            backfill,
+            Optional.of(RunStateDataPayload.create(retrieveBackfillStatuses(backfill)))))
+        .collect(toList());
+    return BackfillsPayload.create(backfillPayloads);
   }
 
   private Response<BackfillPayload> getBackfill(String id) {
     try {
       Optional<Backfill> backfillOpt = storage.backfill(id);
       if (backfillOpt.isPresent()) {
-        final Backfill backfill = backfillOpt.get();
-        final List<RunStateData> processedStates;
-        final List<RunStateData> waitingStates;
-
-        final List<Instant> processedInstants = rangeOfInstants(
-              backfill.start(), backfill.nextTrigger(), backfill.partitioning());
-        processedStates = processedInstants.stream()
-            .map(instant -> {
-              final WorkflowInstance wfi = WorkflowInstance
-                  .create(backfill.workflowId(), toParameter(backfill.partitioning(), instant));
-              Optional<RunState> restoredStateOpt = ReplayEvents.getBackfillRunState(
-                  wfi,
-                  storage,
-                  backfill.id());
-              if (restoredStateOpt.isPresent()) {
-                RunState state = restoredStateOpt.get();
-                return RunStateData.create(state.workflowInstance(), state.state().name(), state.data());
-              } else {
-                return RunStateData.create(wfi, "UNKNOWN", StateData.zero());
-              }
-            })
-            .collect(toList());
-
-        final List<Instant> waitingInstants = rangeOfInstants(
-            backfill.nextTrigger(), backfill.end(), backfill.partitioning());
-        waitingStates = waitingInstants.stream()
-            .map(instant -> {
-              final WorkflowInstance wfi = WorkflowInstance.create(
-                  backfill.workflowId(), toParameter(backfill.partitioning(), instant));
-              return RunStateData.create(wfi, "WAITING", StateData.zero());
-            })
-            .collect(toList());
-
-        return Response.forPayload(
-            BackfillPayload.create(backfill, RunStateDataPayload.create(
-                    Stream.concat(processedStates.stream(), waitingStates.stream())
-                        .collect(toList()))));
+        List<RunStateData> statues = retrieveBackfillStatuses(backfillOpt.get());
+        return Response.forPayload(BackfillPayload.create(
+            backfillOpt.get(), Optional.of(RunStateDataPayload.create(statues))));
+      } else {
+        return Response.forStatus(Status.NOT_FOUND);
       }
-      return Response.forStatus(Status.NOT_FOUND);
     } catch (IOException e) {
       throw Throwables.propagate(e);
     }
@@ -266,6 +240,42 @@ public final class BackfillResource {
     }
 
     return Response.forStatus(Status.OK).withPayload(backfill);
+  }
+
+  private List<RunStateData> retrieveBackfillStatuses(Backfill backfill) {
+    final List<RunStateData> processedStates;
+    final List<RunStateData> waitingStates;
+
+    final List<Instant> processedInstants = rangeOfInstants(
+        backfill.start(), backfill.nextTrigger(), backfill.partitioning());
+    processedStates = processedInstants.stream()
+        .map(instant -> {
+          final WorkflowInstance wfi = WorkflowInstance
+              .create(backfill.workflowId(), toParameter(backfill.partitioning(), instant));
+          Optional<RunState> restoredStateOpt = ReplayEvents.getBackfillRunState(
+              wfi,
+              storage,
+              backfill.id());
+          if (restoredStateOpt.isPresent()) {
+            RunState state = restoredStateOpt.get();
+            return RunStateData.create(state.workflowInstance(), state.state().name(), state.data());
+          } else {
+            return RunStateData.create(wfi, "UNKNOWN", StateData.zero());
+          }
+        })
+        .collect(toList());
+
+    final List<Instant> waitingInstants = rangeOfInstants(
+        backfill.nextTrigger(), backfill.end(), backfill.partitioning());
+    waitingStates = waitingInstants.stream()
+        .map(instant -> {
+          final WorkflowInstance wfi = WorkflowInstance.create(
+              backfill.workflowId(), toParameter(backfill.partitioning(), instant));
+          return RunStateData.create(wfi, "WAITING", StateData.zero());
+        })
+        .collect(toList());
+
+    return Stream.concat(processedStates.stream(), waitingStates.stream()).collect(toList());
   }
 
   private static String arg(String name, RequestContext rc) {

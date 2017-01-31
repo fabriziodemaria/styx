@@ -152,7 +152,7 @@ public class BackfillResourceTest extends VersionedApiTest {
         awaitResponse(serviceHelper.request("GET", path("")));
 
     assertThat(response, hasStatus(belongsToFamily(StatusType.Family.SUCCESSFUL)));
-    assertJson(response, "backfills[0].id", equalTo(BACKFILL_1.id()));
+    assertJson(response, "backfills[0].backfill.id", equalTo(BACKFILL_1.id()));
   }
 
   @Test
