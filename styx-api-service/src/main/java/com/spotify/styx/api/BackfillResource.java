@@ -104,6 +104,8 @@ public final class BackfillResource {
 
   private BackfillsPayload getBackfills(RequestContext requestContext) {
     final Optional<String> componentOpt = requestContext.request().parameter("component");
+    final Optional<String> statusesFlagOpt = requestContext.request().parameter("status");
+
     final List<BackfillPayload> backfillPayloads;
     List<Backfill> backfills;
     try {
@@ -123,7 +125,9 @@ public final class BackfillResource {
     backfillPayloads = backfills.stream()
         .map(backfill -> BackfillPayload.create(
             backfill,
-            Optional.of(RunStateDataPayload.create(retrieveBackfillStatuses(backfill)))))
+            statusesFlagOpt.isPresent()
+            ? Optional.of(RunStateDataPayload.create(retrieveBackfillStatuses(backfill)))
+            : Optional.empty()))
         .collect(toList());
     return BackfillsPayload.create(backfillPayloads);
   }

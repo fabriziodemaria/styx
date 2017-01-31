@@ -23,6 +23,7 @@ package com.spotify.styx.api;
 import static com.spotify.apollo.test.unit.ResponseMatchers.hasStatus;
 import static com.spotify.apollo.test.unit.StatusTypeMatchers.belongsToFamily;
 import static com.spotify.styx.api.JsonMatchers.assertJson;
+import static com.spotify.styx.api.JsonMatchers.assertNoJson;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
@@ -145,7 +146,7 @@ public class BackfillResourceTest extends VersionedApiTest {
   }
 
   @Test
-  public void shouldListBackfills() throws Exception {
+  public void shouldListBackfillsNoStatus() throws Exception {
     sinceVersion(Api.Version.V1);
 
     Response<ByteString> response =
@@ -153,6 +154,19 @@ public class BackfillResourceTest extends VersionedApiTest {
 
     assertThat(response, hasStatus(belongsToFamily(StatusType.Family.SUCCESSFUL)));
     assertJson(response, "backfills[0].backfill.id", equalTo(BACKFILL_1.id()));
+    assertNoJson(response, "backfills[0].statuses.active_states");
+  }
+
+  @Test
+  public void shouldListBackfillsWithStatus() throws Exception {
+    sinceVersion(Api.Version.V1);
+
+    Response<ByteString> response =
+        awaitResponse(serviceHelper.request("GET", path("?status")));
+
+    assertThat(response, hasStatus(belongsToFamily(StatusType.Family.SUCCESSFUL)));
+    assertJson(response, "backfills[0].backfill.id", equalTo(BACKFILL_1.id()));
+    assertJson(response, "backfills[0].statuses.active_states", hasSize(24));
   }
 
   @Test
