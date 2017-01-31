@@ -29,7 +29,7 @@ import com.spotify.styx.model.Backfill;
 
 @AutoValue
 @JsonIgnoreProperties(ignoreUnknown = true)
-public abstract class BackfillStatusPayload {
+public abstract class BackfillPayload {
 
   @JsonProperty
   public abstract Backfill backfill();
@@ -38,9 +38,9 @@ public abstract class BackfillStatusPayload {
   public abstract RunStateDataPayload statuses();
 
   @JsonCreator
-  static BackfillStatusPayload create(
+  static BackfillPayload create(
       @JsonProperty("backfill") Backfill backfill,
       @JsonProperty("statuses") RunStateDataPayload statuses) {
-    return new AutoValue_BackfillStatusPayload(backfill, statuses);
+    return new AutoValue_BackfillPayload(backfill, statuses);
   }
 }

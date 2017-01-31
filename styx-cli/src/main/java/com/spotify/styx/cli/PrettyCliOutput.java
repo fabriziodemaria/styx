@@ -31,7 +31,7 @@ import static org.fusesource.jansi.Ansi.Color.GREEN;
 import static org.fusesource.jansi.Ansi.Color.RED;
 import static org.fusesource.jansi.Ansi.Color.YELLOW;
 
-import com.spotify.styx.api.BackfillStatusPayload;
+import com.spotify.styx.api.BackfillPayload;
 import com.spotify.styx.api.cli.RunStateDataPayload;
 import com.spotify.styx.model.Backfill;
 import com.spotify.styx.state.Message;
@@ -125,7 +125,7 @@ class PrettyCliOutput implements CliOutput {
   }
 
   @Override
-  public void printBackfill(BackfillStatusPayload backfillStatus) {
+  public void printBackfill(BackfillPayload backfillStatus) {
     System.out.println(backfillStatus);
   }
 }

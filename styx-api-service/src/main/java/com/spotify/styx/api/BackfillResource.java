@@ -84,7 +84,7 @@ public final class BackfillResource {
             "POST", BASE,
             rc -> this::postBackfill),
         Route.with(
-            em.serializerResponse(BackfillStatusPayload.class),
+            em.serializerResponse(BackfillPayload.class),
             "GET", BASE + "/<bid>",
             rc -> getBackfill(arg("bid", rc))),
         Route.with(
@@ -121,7 +121,7 @@ public final class BackfillResource {
     return BackfillsPayload.create(backfills);
   }
 
-  private Response<BackfillStatusPayload> getBackfill(String id) {
+  private Response<BackfillPayload> getBackfill(String id) {
     try {
       Optional<Backfill> backfillOpt = storage.backfill(id);
       if (backfillOpt.isPresent()) {
@@ -159,7 +159,7 @@ public final class BackfillResource {
             .collect(toList());
 
         return Response.forPayload(
-            BackfillStatusPayload.create(backfill, RunStateDataPayload.create(
+            BackfillPayload.create(backfill, RunStateDataPayload.create(
                     Stream.concat(processedStates.stream(), waitingStates.stream())
                         .collect(toList()))));
       }
