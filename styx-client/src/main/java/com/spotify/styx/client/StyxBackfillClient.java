@@ -23,6 +23,7 @@ package com.spotify.styx.client;
 import com.spotify.styx.api.BackfillPayload;
 import com.spotify.styx.api.BackfillsPayload;
 import com.spotify.styx.model.Backfill;
+import java.io.UnsupportedEncodingException;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
@@ -45,7 +46,8 @@ public interface StyxBackfillClient {
                                            final String workflowId,
                                            final String start,
                                            final String end,
-                                           final int concurrency);
+                                           final int concurrency)
+      throws UnsupportedEncodingException;
 
   /**
    * Edit concurrency value of existing {@link Backfill}
@@ -55,14 +57,15 @@ public interface StyxBackfillClient {
    * @return The updated {@link Backfill}
    */
   CompletionStage<Backfill> backfillEditConcurrency(final String backfillId,
-                                                    final int concurrency);
+                                                    final int concurrency)
+      throws UnsupportedEncodingException;
 
   /**
    * Halt an existing {@link Backfill}
    *
    * @param backfillId backfill id
    */
-  CompletionStage<Void> backfillHalt(final String backfillId);
+  CompletionStage<Void> backfillHalt(final String backfillId) throws UnsupportedEncodingException;
 
   /**
    * Get an existing {@link Backfill}
@@ -70,7 +73,8 @@ public interface StyxBackfillClient {
    * @param backfillId backfill id
    * @return The required {@link Backfill}
    */
-  CompletionStage<BackfillPayload> backfill(final String backfillId);
+  CompletionStage<BackfillPayload> backfill(final String backfillId)
+      throws UnsupportedEncodingException;
 
   /**
    * List of existing {@link Backfill}s
@@ -84,6 +88,7 @@ public interface StyxBackfillClient {
   CompletionStage<BackfillsPayload> backfillList(final Optional<String> componentId,
                                                  final Optional<String> workflowId,
                                                  final boolean showAll,
-                                                 final boolean status);
+                                                 final boolean status)
+      throws UnsupportedEncodingException;
 
 }

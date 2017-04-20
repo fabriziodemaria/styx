@@ -30,6 +30,7 @@ import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowState;
 import com.spotify.styx.util.ParameterUtil;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.time.format.DateTimeParseException;
 import java.util.Collections;
 import java.util.Map;
@@ -232,13 +233,16 @@ public final class Main {
     } catch (ArgumentParserException e) {
       parser.parser.handleError(e);
       System.exit(EXIT_CODE_ARGUMENT_ERROR);
+    } catch (UnsupportedEncodingException e) {
+      System.err.println(e.getCause().getMessage());
+      System.exit(EXIT_CODE_ARGUMENT_ERROR);
     } catch (IOException e) {
       e.printStackTrace();
       System.exit(EXIT_CODE_UNKNOWN_ERROR);
     }
   }
 
-  private void backfillCreate() {
+  private void backfillCreate() throws UnsupportedEncodingException {
     final String component = namespace.getString(parser.backfillCreateComponent.getDest());
     final String workflow = namespace.getString(parser.backfillCreateWorkflow.getDest());
     final String start = namespace.getString(parser.backfillCreateStart.getDest());
@@ -249,7 +253,7 @@ public final class Main {
         .whenComplete((backfill, throwable) -> cliOutput.printBackfill(backfill));
   }
 
-  private void backfillEdit() {
+  private void backfillEdit() throws UnsupportedEncodingException {
     final Integer concurrency = namespace.getInt(parser.backfillEditConcurrency.getDest());
     final String id = namespace.getString(parser.backfillEditId.getDest());
 
@@ -257,14 +261,14 @@ public final class Main {
         .whenComplete((backfill, throwable) -> cliOutput.printBackfill(backfill));
   }
 
-  private void backfillHalt() {
+  private void backfillHalt() throws UnsupportedEncodingException {
     final String id = namespace.getString(parser.backfillHaltId.getDest());
 
     styxClient.backfillHalt(id).whenComplete((none, throwable) -> cliOutput.printMessage(
         "Backfill halted! Use `styx backfill show " + id + "` to check the backfill status."));
   }
 
-  private void backfillShow() {
+  private void backfillShow() throws UnsupportedEncodingException {
     final String id = namespace.getString(parser.backfillShowId.getDest());
 
     styxClient.backfill(id)
@@ -272,7 +276,7 @@ public final class Main {
         .whenComplete((backfillPayload, throwable) -> cliOutput.printBackfillPayload(backfillPayload));
   }
 
-  private void backfillList() {
+  private void backfillList() throws UnsupportedEncodingException {
     final Optional<String> component =
         Optional.ofNullable(namespace.getString(parser.backfillListComponent.getDest()));
     final Optional<String> workflow =
@@ -283,7 +287,7 @@ public final class Main {
         .whenComplete((backfillsPayload, throwable) -> cliOutput.printBackfills(backfillsPayload.backfills()));
   }
 
-  private void resourceCreate() {
+  private void resourceCreate() throws UnsupportedEncodingException {
     final String id = namespace.getString(parser.resourceCreateId.getDest());
     final int concurrency = namespace.getInt(parser.resourceCreateConcurrency.getDest());
 
@@ -292,7 +296,7 @@ public final class Main {
         .whenComplete((resource, throwable) -> cliOutput.printResources(Collections.singletonList(resource)));
   }
 
-  private void resourceEdit() {
+  private void resourceEdit() throws UnsupportedEncodingException {
     final String id = namespace.getString(parser.resourceEditId.getDest());
     final Integer concurrency = namespace.getInt(parser.resourceEditConcurrency.getDest());
 
@@ -301,7 +305,7 @@ public final class Main {
         .whenComplete((resource, throwable) -> cliOutput.printResources(Collections.singletonList(resource)));
   }
 
-  private void resourceShow() {
+  private void resourceShow() throws UnsupportedEncodingException {
     final String id = namespace.getString(parser.resourceShowId.getDest());
 
     styxClient.resource(id)
@@ -309,13 +313,13 @@ public final class Main {
         .whenComplete((resource, throwable) -> cliOutput.printResources(Collections.singletonList(resource)));
   }
 
-  private void resourceList() {
+  private void resourceList() throws UnsupportedEncodingException {
     styxClient.resourceList()
         .whenComplete(throwableChecker)
         .whenComplete((resourcesPayload, throwable) -> cliOutput.printResources(resourcesPayload.resources()));
   }
 
-  private void workflowShow() {
+  private void workflowShow() throws UnsupportedEncodingException {
     final String component = namespace.getString(parser.workflowShowComponentId.getDest());
     final String workflow = namespace.getString(parser.workflowShowWorkflowId.getDest());
 
@@ -329,7 +333,7 @@ public final class Main {
         .whenComplete((tuple, throwable) -> cliOutput.printWorkflow(tuple._1, tuple._2));
   }
 
-  private void activeStates() {
+  private void activeStates() throws UnsupportedEncodingException {
     final Optional<String> component =
         Optional.ofNullable(namespace.getString(parser.listComponent.getDest()));
 
@@ -338,7 +342,7 @@ public final class Main {
         .whenComplete((runStateDataPayload, throwable) -> cliOutput.printStates(runStateDataPayload));
   }
 
-  private void eventsForWorkflowInstance() {
+  private void eventsForWorkflowInstance() throws UnsupportedEncodingException {
     final String component = namespace.getString(COMPONENT_DEST);
     final String workflow = namespace.getString(WORKFLOW_DEST);
     final String parameter = namespace.getString(PARAMETER_DEST);
@@ -348,7 +352,7 @@ public final class Main {
         .whenComplete((list, throwable) -> cliOutput.printEvents(list));
   }
 
-  private void triggerWorkflowInstance() {
+  private void triggerWorkflowInstance() throws UnsupportedEncodingException {
     final String component = namespace.getString(COMPONENT_DEST);
     final String workflow = namespace.getString(WORKFLOW_DEST);
     final String parameter = namespace.getString(PARAMETER_DEST);
@@ -359,7 +363,7 @@ public final class Main {
             "Triggered! Use `styx ls -c " + component + "` to check active workflow instances."));
   }
 
-  private void haltWorkflowInstance() {
+  private void haltWorkflowInstance() throws UnsupportedEncodingException {
     final String component = namespace.getString(COMPONENT_DEST);
     final String workflow = namespace.getString(WORKFLOW_DEST);
     final String parameter = namespace.getString(PARAMETER_DEST);
@@ -371,7 +375,7 @@ public final class Main {
             + "to verify."));
   }
 
-  private void retryWorkflowInstance() {
+  private void retryWorkflowInstance() throws UnsupportedEncodingException {
     final String component = namespace.getString(COMPONENT_DEST);
     final String workflow = namespace.getString(WORKFLOW_DEST);
     final String parameter = namespace.getString(PARAMETER_DEST);

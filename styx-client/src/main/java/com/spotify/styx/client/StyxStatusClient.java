@@ -24,6 +24,7 @@ import com.spotify.styx.api.RunStateDataPayload;
 import com.spotify.styx.model.Event;
 import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.model.data.EventInfo;
+import java.io.UnsupportedEncodingException;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
@@ -39,7 +40,8 @@ public interface StyxStatusClient {
    * @param componentId component id to filter on
    * @return The information about the active states
    */
-  CompletionStage<RunStateDataPayload> activeStates(final Optional<String> componentId);
+  CompletionStage<RunStateDataPayload> activeStates(final Optional<String> componentId)
+      throws UnsupportedEncodingException;
 
   /**
    * Get {@link Event}s issued for a {@link WorkflowInstance}
@@ -52,5 +54,6 @@ public interface StyxStatusClient {
    */
   CompletionStage<List<EventInfo>> eventsForWorkflowInstance(final String componentId,
                                                              final String workflowId,
-                                                             final String parameter);
+                                                             final String parameter)
+      throws UnsupportedEncodingException;
 }

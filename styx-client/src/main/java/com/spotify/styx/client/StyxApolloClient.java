@@ -80,7 +80,8 @@ public class StyxApolloClient
   }
 
   @Override
-  public CompletionStage<RunStateDataPayload> activeStates(Optional<String> componentId) {
+  public CompletionStage<RunStateDataPayload> activeStates(Optional<String> componentId)
+      throws UnsupportedEncodingException {
     String url = apiUrl("status", "activeStates");
     if (componentId.isPresent()) {
       url = addQueryToApiUrl(url, "component=" + componentId.get());
@@ -93,7 +94,8 @@ public class StyxApolloClient
   @Override
   public CompletionStage<List<EventInfo>> eventsForWorkflowInstance(String componentId,
                                                                     String workflowId,
-                                                                    String parameter) {
+                                                                    String parameter)
+      throws UnsupportedEncodingException {
     final String url = apiUrl("status", "events", componentId, workflowId, parameter);
     return executeRequest(Request.forUri(url).withTtl(Duration.ofSeconds(TTL_SECONDS)))
         .thenApply(response -> {
@@ -137,13 +139,15 @@ public class StyxApolloClient
   }
 
   @Override
-  public CompletionStage<Workflow> workflow(String componentId, String workflowId) {
+  public CompletionStage<Workflow> workflow(String componentId, String workflowId)
+      throws UnsupportedEncodingException {
     final String url = apiUrl("workflows", componentId, workflowId);
     return executeRequest(Request.forUri(url), Workflow.class);
   }
 
   @Override
-  public CompletionStage<WorkflowState> workflowState(String componentId, String workflowId) {
+  public CompletionStage<WorkflowState> workflowState(String componentId, String workflowId)
+      throws UnsupportedEncodingException {
     final String url = apiUrl("workflows", componentId, workflowId, "state");
     return executeRequest(Request.forUri(url), WorkflowState.class);
   }
@@ -151,7 +155,8 @@ public class StyxApolloClient
   @Override
   public CompletionStage<Void> triggerWorkflowInstance(String componentId,
                                                        String workflowId,
-                                                       String parameter) {
+                                                       String parameter)
+      throws UnsupportedEncodingException {
     final String url = apiUrl("scheduler", "trigger", componentId, workflowId, parameter);
     return executeRequest(Request.forUri(url, "POST")).thenApply(response -> (Void) null);
   }
@@ -159,7 +164,8 @@ public class StyxApolloClient
   @Override
   public CompletionStage<Void> haltWorkflowInstance(String componentId,
                                                     String workflowId,
-                                                    String parameter) {
+                                                    String parameter)
+      throws UnsupportedEncodingException {
     final String url = apiUrl("scheduler", "halt", componentId, workflowId, parameter);
     return executeRequest(Request.forUri(url, "POST")).thenApply(response -> (Void) null);
   }
@@ -167,13 +173,15 @@ public class StyxApolloClient
   @Override
   public CompletionStage<Void> retryWorkflowInstance(String componentId,
                                                      String workflowId,
-                                                     String parameter) {
+                                                     String parameter)
+      throws UnsupportedEncodingException {
     final String url = apiUrl("scheduler", "retry", componentId, workflowId, parameter);
     return executeRequest(Request.forUri(url, "POST")).thenApply(response -> (Void) null);
   }
 
   @Override
-  public CompletionStage<Resource> resourceCreate(String resourceId, int concurrency) {
+  public CompletionStage<Resource> resourceCreate(String resourceId, int concurrency)
+      throws UnsupportedEncodingException {
     final String url = apiUrl("resources");
     try {
       final ByteString payload = serialize(Resource.create(resourceId, concurrency));
@@ -184,7 +192,8 @@ public class StyxApolloClient
   }
 
   @Override
-  public CompletionStage<Resource> resourceEdit(String resourceId, int concurrency) {
+  public CompletionStage<Resource> resourceEdit(String resourceId, int concurrency)
+      throws UnsupportedEncodingException {
     final String url = apiUrl("resources", resourceId);
     try {
       final ByteString payload = serialize(Resource.create(resourceId, concurrency));
@@ -195,13 +204,13 @@ public class StyxApolloClient
   }
 
   @Override
-  public CompletionStage<Resource> resource(String resourceId) {
+  public CompletionStage<Resource> resource(String resourceId) throws UnsupportedEncodingException {
     final String url = apiUrl("resources", resourceId);
     return executeRequest(Request.forUri(url), Resource.class);
   }
 
   @Override
-  public CompletionStage<ResourcesPayload> resourceList() {
+  public CompletionStage<ResourcesPayload> resourceList() throws UnsupportedEncodingException {
     final String url = apiUrl("resources");
     return executeRequest(Request.forUri(url), ResourcesPayload.class);
   }
@@ -209,7 +218,8 @@ public class StyxApolloClient
   @Override
   public CompletionStage<Backfill> backfillCreate(String componentId, String workflowId,
                                                   String start, String end,
-                                                  int concurrency) {
+                                                  int concurrency)
+      throws UnsupportedEncodingException {
     final String url = apiUrl("backfills");
     try {
       final ByteString payload = serialize(BackfillInput.create(
@@ -221,10 +231,12 @@ public class StyxApolloClient
   }
 
   @Override
-  public CompletionStage<Backfill> backfillEditConcurrency(String backfillId, int concurrency) {
+  public CompletionStage<Backfill> backfillEditConcurrency(String backfillId, int concurrency)
+      throws UnsupportedEncodingException {
+    final String url = apiUrl("backfills", backfillId);
+
     return backfill(backfillId).thenCompose(backfillPayload -> {
       final Backfill editedBackfill = backfillPayload.backfill().builder().concurrency(concurrency).build();
-      final String url = apiUrl("backfills", backfillId);
       try {
         final ByteString payload = serialize(editedBackfill);
         return executeRequest(Request.forUri(url, "PUT").withPayload(payload), Backfill.class);
@@ -235,13 +247,14 @@ public class StyxApolloClient
   }
 
   @Override
-  public CompletionStage<Void> backfillHalt(String backfillId) {
+  public CompletionStage<Void> backfillHalt(String backfillId) throws UnsupportedEncodingException {
     final String url = apiUrl("backfills");
     return executeRequest(Request.forUri(url, "DELETE")).thenApply(response -> (Void) null);
   }
 
   @Override
-  public CompletionStage<BackfillPayload> backfill(String backfillId) {
+  public CompletionStage<BackfillPayload> backfill(String backfillId)
+      throws UnsupportedEncodingException {
     final String url = apiUrl("backfills", backfillId);
     return executeRequest(Request.forUri(url), BackfillPayload.class);
   }
@@ -250,7 +263,8 @@ public class StyxApolloClient
   public CompletionStage<BackfillsPayload> backfillList(Optional<String> componentId,
                                                         Optional<String> workflowId,
                                                         boolean showAll,
-                                                        boolean status) {
+                                                        boolean status)
+      throws UnsupportedEncodingException {
     List<String> queries = new ArrayList<>();
     componentId.ifPresent(c -> queries.add("component=" + c));
     workflowId.ifPresent(w -> queries.add("workflow=" + w));
@@ -290,29 +304,27 @@ public class StyxApolloClient
     });
   }
 
-  private String apiUrl(String... parts) {
-    List<String> encodedPartsList = Arrays.stream(parts).map(part -> {
-      try {
-        return URLEncoder.encode(part, UTF_8);
-      } catch (UnsupportedEncodingException e) {
-        throw new RuntimeException("UTF encoding for URL not successful " + e);
-      }
-    }).collect(Collectors.toList());
+  private String apiUrl(String... parts) throws UnsupportedEncodingException {
+    List<String> encodedPartsList = new ArrayList<>();
+
+    for (String part : parts) {
+      encodedPartsList.add(URLEncoder.encode(part, UTF_8));
+    }
     return "http://" + apiHost + STYX_API_ENDPOINT + "/" + String.join("/", encodedPartsList);
   }
 
-  private String addQueryToApiUrl(String url, List<String> queries) {
-    List<String> encodedQueryParts = queries.stream().map(query -> {
-      try {
-        return URLEncoder.encode(query, UTF_8);
-      } catch (UnsupportedEncodingException e) {
-        throw new RuntimeException("UTF encoding for query parameter not successful " + e);
-      }
-    }).collect(Collectors.toList());
+  private String addQueryToApiUrl(String url, List<String> queries)
+      throws UnsupportedEncodingException {
+    List<String> encodedQueryParts = new ArrayList<>();
+
+    for (String query : queries) {
+      encodedQueryParts.add(URLEncoder.encode(query, UTF_8));
+    }
     return url + "?" + String.join("&", encodedQueryParts);
   }
 
-  private String addQueryToApiUrl(String url, String... queries) {
+  private String addQueryToApiUrl(String url, String... queries)
+      throws UnsupportedEncodingException {
     return addQueryToApiUrl(url, Arrays.stream(queries).collect(Collectors.toList()));
   }
 }

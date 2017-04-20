@@ -22,6 +22,7 @@ package com.spotify.styx.client;
 
 import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowState;
+import java.io.UnsupportedEncodingException;
 import java.util.concurrent.CompletionStage;
 
 /**
@@ -35,7 +36,8 @@ public interface StyxWorkflowClient {
    * @param componentId componentId id
    * @param workflowId  workflowId id
    */
-  CompletionStage<Workflow> workflow(final String componentId, final String workflowId);
+  CompletionStage<Workflow> workflow(final String componentId, final String workflowId)
+      throws UnsupportedEncodingException;
 
   /**
    * Get a {@link WorkflowState}
@@ -43,5 +45,6 @@ public interface StyxWorkflowClient {
    * @param componentId componentId id
    * @param workflowId  workflowId id
    */
-  CompletionStage<WorkflowState> workflowState(final String componentId, final String workflowId);
+  CompletionStage<WorkflowState> workflowState(final String componentId, final String workflowId)
+      throws UnsupportedEncodingException;
 }

@@ -21,6 +21,7 @@
 package com.spotify.styx.client;
 
 import com.spotify.styx.model.WorkflowInstance;
+import java.io.UnsupportedEncodingException;
 import java.util.concurrent.CompletionStage;
 
 /**
@@ -37,7 +38,8 @@ public interface StyxSchedulerClient {
    */
   CompletionStage<Void> triggerWorkflowInstance(final String componentId,
                                                 final String workflowId,
-                                                final String parameter);
+                                                final String parameter)
+      throws UnsupportedEncodingException;
 
   /**
    * Halt a {@link WorkflowInstance}
@@ -48,7 +50,8 @@ public interface StyxSchedulerClient {
    */
   CompletionStage<Void> haltWorkflowInstance(final String componentId,
                                              final String workflowId,
-                                             final String parameter);
+                                             final String parameter)
+      throws UnsupportedEncodingException;
 
   /**
    * Retry a {@link WorkflowInstance}
@@ -59,5 +62,6 @@ public interface StyxSchedulerClient {
    */
   CompletionStage<Void> retryWorkflowInstance(final String componentId,
                                               final String workflowId,
-                                              final String parameter);
+                                              final String parameter)
+      throws UnsupportedEncodingException;
 }

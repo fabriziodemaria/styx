@@ -22,6 +22,7 @@ package com.spotify.styx.client;
 
 import com.spotify.styx.api.ResourcesPayload;
 import com.spotify.styx.model.Resource;
+import java.io.UnsupportedEncodingException;
 import java.util.concurrent.CompletionStage;
 
 /**
@@ -35,9 +36,11 @@ interface StyxResourceClient {
    * @param resourceId  resource id to use for the {@link Resource}
    * @param concurrency resource value
    * @return The created {@link Resource}
+   * @throws UnsupportedEncodingException if the parameter
    */
   CompletionStage<Resource> resourceCreate(final String resourceId,
-                                           final int concurrency);
+                                           final int concurrency)
+      throws UnsupportedEncodingException;
 
   /**
    * Edit an existing {@link Resource}
@@ -47,7 +50,7 @@ interface StyxResourceClient {
    * @return The updated{@link Resource}
    */
   CompletionStage<Resource> resourceEdit(final String resourceId,
-                                         final int concurrency);
+                                         final int concurrency) throws UnsupportedEncodingException;
 
   /**
    * Get an existing {@link Resource}
@@ -55,13 +58,13 @@ interface StyxResourceClient {
    * @param resourceId resource id
    * @return The required {@link Resource}
    */
-  CompletionStage<Resource> resource(final String resourceId);
+  CompletionStage<Resource> resource(final String resourceId) throws UnsupportedEncodingException;
 
   /**
    * List of existing {@link Resource}s
    *
    * @return The list of all existing {@link Resource}s
    */
-  CompletionStage<ResourcesPayload> resourceList();
+  CompletionStage<ResourcesPayload> resourceList() throws UnsupportedEncodingException;
 
 }
