@@ -142,7 +142,7 @@ public final class Main {
     try (Service.Instance instance = cliService.start()) {
       final Service.Signaller signaller = instance.getSignaller();
       final Client client = ApolloEnvironmentModule.environment(instance).environment().client();
-      styxClient = new StyxApolloClient(client, apiHost);
+      styxClient = new StyxApolloClient(client, apiHost, STYX_CLI_VERSION);
 
       switch (command) {
         case LIST:

@@ -65,17 +65,18 @@ public class StyxApolloClient
                StyxSchedulerClient, StyxStatusClient {
   private static final String STYX_API_ENDPOINT = "/api/v2";
   private static final String UTF_8 = "UTF-8";
-  private static final String STYX_CLIENT_VERSION =
-      "Styx Client " + StyxApolloClient.class.getPackage().getImplementationVersion();
   private static final int TTL_SECONDS = 90;
 
-  private final String apiHost;
   private final Client client;
+  private final String apiHost;
+  private final String userAgentIdentifier;
 
   public StyxApolloClient(final Client client,
-                          final String apiHost) {
-    this.apiHost = apiHost;
+                          final String apiHost,
+                          final String userAgentIdentifier) {
     this.client = client;
+    this.apiHost = apiHost;
+    this.userAgentIdentifier = userAgentIdentifier;
   }
 
   @Override
@@ -278,15 +279,16 @@ public class StyxApolloClient
   }
 
   private CompletionStage<Response<ByteString>> executeRequest(final Request request) {
-    return client.send(request.withHeader("User-Agent", STYX_CLIENT_VERSION)).thenApply(response -> {
-      switch (response.status().family()) {
-        case SUCCESSFUL:
-          return response;
-        default:
-          final String status = response.status().code() + " " + response.status().reasonPhrase();
-          throw new RuntimeException("API error: " + status);
-      }
-    });
+    return client.send(request.withHeader("User-Agent", userAgentIdentifier))
+        .thenApply(response -> {
+          switch (response.status().family()) {
+            case SUCCESSFUL:
+              return response;
+            default:
+              final String status = response.status().code() + " " + response.status().reasonPhrase();
+              throw new RuntimeException("API error: " + status);
+          }
+        });
   }
 
   private String apiUrl(String... parts) {
