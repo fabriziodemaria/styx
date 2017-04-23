@@ -25,7 +25,10 @@ import com.spotify.apollo.core.Service;
 import com.spotify.apollo.core.Services;
 import com.spotify.apollo.environment.ApolloEnvironmentModule;
 import com.spotify.apollo.http.client.HttpClientModule;
-import com.spotify.styx.client.StyxApolloClient;
+import com.spotify.styx.client.StyxBackfillClient;
+import com.spotify.styx.client.StyxClient;
+import com.spotify.styx.client.StyxClientFactory;
+import com.spotify.styx.client.StyxStatusClient;
 import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowState;
 import com.spotify.styx.util.ParameterUtil;
@@ -71,7 +74,7 @@ public final class Main {
   private final String apiHost;
   private final Service cliService;
   private final CliOutput cliOutput;
-  private StyxApolloClient styxClient;
+  private StyxClient styxClient;
   private final BiConsumer<Object, Throwable> throwableChecker = (response, throwable) -> {
     if (throwable != null) {
       if (throwable.getCause() == null) {
@@ -142,7 +145,7 @@ public final class Main {
     try (Service.Instance instance = cliService.start()) {
       final Service.Signaller signaller = instance.getSignaller();
       final Client client = ApolloEnvironmentModule.environment(instance).environment().client();
-      styxClient = new StyxApolloClient(client, apiHost, STYX_CLI_VERSION);
+      styxClient = StyxClientFactory.create(client, apiHost);
 
       switch (command) {
         case LIST:

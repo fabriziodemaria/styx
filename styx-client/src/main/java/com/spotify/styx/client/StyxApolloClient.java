@@ -60,9 +60,7 @@ import okio.ByteString;
 /**
  * Styx Apollo Client Implementation
  */
-public class StyxApolloClient
-    implements StyxWorkflowClient, StyxBackfillClient, StyxResourceClient,
-               StyxSchedulerClient, StyxStatusClient {
+class StyxApolloClient implements StyxClient {
   private static final String STYX_API_ENDPOINT = "/api/v2";
   private static final String UTF_8 = "UTF-8";
   private static final int TTL_SECONDS = 90;
