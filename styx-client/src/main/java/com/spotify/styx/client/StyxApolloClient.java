@@ -44,17 +44,17 @@ import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowState;
 import com.spotify.styx.model.data.EventInfo;
 import com.spotify.styx.util.EventUtil;
+import com.squareup.okhttp.HttpUrl;
+import com.squareup.okhttp.HttpUrl.Builder;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
-import java.util.stream.Collectors;
+import javaslang.Tuple;
+import javaslang.Tuple2;
 import okio.ByteString;
 
 /**
@@ -82,7 +82,7 @@ class StyxApolloClient implements StyxClient {
   public CompletionStage<RunStateDataPayload> activeStates(Optional<String> componentId) {
     String url = apiUrl("status", "activeStates");
     if (componentId.isPresent()) {
-      url = addQueryToApiUrl(url, "component=" + componentId.get());
+      url = addQueryToApiUrl(url, ImmutableList.of(Tuple.of("component", componentId.get())));
     }
     return executeRequest(
         Request.forUri(url).withTtl(Duration.ofSeconds(TTL_SECONDS)),
@@ -250,11 +250,11 @@ class StyxApolloClient implements StyxClient {
                                                         Optional<String> workflowId,
                                                         boolean showAll,
                                                         boolean status) {
-    List<String> queries = new ArrayList<>();
-    componentId.ifPresent(c -> queries.add("component=" + c));
-    workflowId.ifPresent(w -> queries.add("workflow=" + w));
-    queries.add("showAll=" + showAll);
-    queries.add("status=" + status);
+    final List<Tuple2<String, String>> queries = new ArrayList<>();
+    componentId.ifPresent(c -> queries.add(Tuple.of("component", c)));
+    workflowId.ifPresent(w -> queries.add(Tuple.of("workflow", w)));
+    queries.add(Tuple.of("showAll", Boolean.toString(showAll)));
+    queries.add(Tuple.of("status", Boolean.toString(status)));
 
     String url = apiUrl("backfills");
     url = addQueryToApiUrl(url, queries);
@@ -289,29 +289,23 @@ class StyxApolloClient implements StyxClient {
     });
   }
 
-  private String apiUrl(String... parts) {
-    List<String> encodedPartsList = Arrays.stream(parts).map(part -> {
-      try {
-        return URLEncoder.encode(part, UTF_8);
-      } catch (UnsupportedEncodingException e) {
-        throw new RuntimeException(e);
-      }
-    }).collect(Collectors.toList());
-    return "http://" + apiHost + STYX_API_ENDPOINT + "/" + String.join("/", encodedPartsList);
+  private String apiUrl(String... pathSegments) {
+    final Builder urlBuilder = new HttpUrl.Builder()
+        .scheme("http")
+        .host(apiHost);
+
+    for (String pathSegment : pathSegments) {
+      urlBuilder.addPathSegment(pathSegment);
+    }
+    return urlBuilder.build().toString();
   }
 
-  private String addQueryToApiUrl(String url, List<String> queries) {
-    List<String> encodedQueryParts = queries.stream().map(query -> {
-      try {
-        return URLEncoder.encode(query, UTF_8);
-      } catch (UnsupportedEncodingException e) {
-        throw new RuntimeException(e);
-      }
-    }).collect(Collectors.toList());
-    return url + "?" + String.join("&", encodedQueryParts);
-  }
+  private String addQueryToApiUrl(String url, List<Tuple2<String, String>> queries) {
+    final Builder urlBuilder = HttpUrl.parse(url).newBuilder();
 
-  private String addQueryToApiUrl(String url, String... queries) {
-    return addQueryToApiUrl(url, Arrays.stream(queries).collect(Collectors.toList()));
+    for (Tuple2<String, String> queryTuple : queries) {
+      urlBuilder.addQueryParameter(queryTuple._1, queryTuple._2);
+    }
+    return urlBuilder.build().toString();
   }
 }
