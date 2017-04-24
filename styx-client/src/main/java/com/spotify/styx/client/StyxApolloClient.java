@@ -58,7 +58,9 @@ import java.util.stream.Collectors;
 import okio.ByteString;
 
 /**
- * Styx Apollo Client Implementation
+ * Styx Apollo Client Implementation. In case of API errors, the {@link Throwable} in the returned
+ * {@link CompletionStage} will be of kind {@link ApiErrorException}. Other errors will be treated
+ * as {@link RuntimeException} instead.
  */
 public class StyxApolloClient
     implements StyxWorkflowClient, StyxBackfillClient, StyxResourceClient,
@@ -178,7 +180,7 @@ public class StyxApolloClient
       final ByteString payload = serialize(Resource.create(resourceId, concurrency));
       return executeRequest(Request.forUri(url, "POST").withPayload(payload), Resource.class);
     } catch (JsonProcessingException e) {
-      return CompletableFutures.exceptionallyCompletedFuture(e);
+      return CompletableFutures.exceptionallyCompletedFuture(new RuntimeException(e));
     }
   }
 
@@ -189,7 +191,7 @@ public class StyxApolloClient
       final ByteString payload = serialize(Resource.create(resourceId, concurrency));
       return executeRequest(Request.forUri(url, "PUT").withPayload(payload), Resource.class);
     } catch (JsonProcessingException e) {
-      return CompletableFutures.exceptionallyCompletedFuture(e);
+      return CompletableFutures.exceptionallyCompletedFuture(new RuntimeException(e));
     }
   }
 
@@ -215,7 +217,7 @@ public class StyxApolloClient
           Instant.parse(start), Instant.parse(end), componentId, workflowId, concurrency));
       return executeRequest(Request.forUri(url, "POST").withPayload(payload), Backfill.class);
     } catch (JsonProcessingException e) {
-      return CompletableFutures.exceptionallyCompletedFuture(e);
+      return CompletableFutures.exceptionallyCompletedFuture(new RuntimeException(e));
     }
   }
 
@@ -228,7 +230,7 @@ public class StyxApolloClient
         final ByteString payload = serialize(editedBackfill);
         return executeRequest(Request.forUri(url, "PUT").withPayload(payload), Backfill.class);
       } catch (JsonProcessingException e) {
-        return CompletableFutures.exceptionallyCompletedFuture(e);
+        return CompletableFutures.exceptionallyCompletedFuture(new RuntimeException(e));
       }
     });
   }
@@ -283,8 +285,8 @@ public class StyxApolloClient
         case SUCCESSFUL:
           return response;
         default:
-          final String status = response.status().code() + " " + response.status().reasonPhrase();
-          throw new RuntimeException("API error: " + status);
+          final String message = response.status().code() + " " + response.status().reasonPhrase();
+          throw new ApiErrorException(message, response.status().code());
       }
     });
   }
