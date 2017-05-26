@@ -61,12 +61,12 @@ public class ExecutionDescriptionHandler implements OutputHandler {
     switch (state.state()) {
       case PREPARE:
         try {
-          final Event createdEvent =
+          final Event submitEvent =
               Event.submit(state.workflowInstance(), getExecDescription(workflowInstance));
           try {
-            stateManager.receive(createdEvent);
+            stateManager.receive(submitEvent);
           } catch (StateManager.IsClosed isClosed) {
-            LOG.warn("Could not send 'created' event", isClosed);
+            LOG.warn("Could not send 'submit' event", isClosed);
           }
         } catch (ResourceNotFoundException e) {
           LOG.warn("Failed to prepare execution description for "
