@@ -31,6 +31,7 @@ import com.spotify.styx.model.WorkflowId;
 import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.storage.Storage;
 import com.spotify.styx.util.AlreadyInitializedException;
+import com.spotify.styx.util.IsClosed;
 import com.spotify.styx.util.Time;
 import java.io.IOException;
 import java.util.Map;
@@ -73,7 +74,7 @@ public class QueuedStateManager implements StateManager {
   private final Time time;
   private final Executor workerPool;
   private final Storage storage;
-  private final QueuedEventConsumer consumer;
+  private final QueuedEventConsumer<SequenceEvent> consumer;
 
   private final ConcurrentMap<WorkflowInstance, InstanceState> states = Maps.newConcurrentMap();
 
@@ -87,7 +88,7 @@ public class QueuedStateManager implements StateManager {
       Time time,
       Executor workerPool,
       Storage storage,
-      QueuedEventConsumer consumer) {
+      QueuedEventConsumer<SequenceEvent> consumer) {
     this.time = Objects.requireNonNull(time);
     this.workerPool = Objects.requireNonNull(workerPool);
     this.storage = Objects.requireNonNull(storage);
@@ -313,7 +314,7 @@ public class QueuedStateManager implements StateManager {
   private void consumeEvent(SequenceEvent sequenceEvent) throws IOException {
     try {
       consumer.enqueue(sequenceEvent);
-    } catch (QueuedEventConsumer.IsClosed isClosed) {
+    } catch (IsClosed isClosed) {
       LOG.warn("QueuedEventConsumer was closed while processing {}", sequenceEvent);
     }
   }

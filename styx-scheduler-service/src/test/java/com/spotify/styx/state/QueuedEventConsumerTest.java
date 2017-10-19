@@ -31,20 +31,23 @@ import com.spotify.styx.model.Event;
 import com.spotify.styx.model.SequenceEvent;
 import com.spotify.styx.model.WorkflowId;
 import com.spotify.styx.model.WorkflowInstance;
-import com.spotify.styx.publisher.EventConsumer;
+import com.spotify.styx.util.IsClosed;
 import java.util.List;
+import java.util.function.Consumer;
 import org.junit.Test;
 
 public class QueuedEventConsumerTest {
-  private List<SequenceEvent> trackedEvents = Lists.newArrayList();
-  private QueuedEventConsumer consumer = new QueuedEventConsumer(new InjectingEventConsumer());
   private final static WorkflowInstance wfi = WorkflowInstance.create(
       WorkflowId.create("comp1", "work1"),
       "2017-01-01");
   private final static SequenceEvent firstEvent = SequenceEvent.create(
-      Event.triggerExecution(wfi, Trigger.natural()), 0, 0);
+      Event.triggerExecution(wfi, Trigger.natural()),0,0);
   private final static SequenceEvent secondEvent = SequenceEvent.create(
-      Event.dequeue(wfi), 0, 0);
+      Event.dequeue(wfi),0,0);
+
+  private List<SequenceEvent> trackedEvents = Lists.newArrayList();
+  private QueuedEventConsumer<SequenceEvent> consumer =
+      new QueuedEventConsumer<>(new InjectingEventConsumer());
 
   @Test
   public void shouldConsumeEvent() throws Exception {
@@ -55,8 +58,8 @@ public class QueuedEventConsumerTest {
 
   @Test
   public void shouldSkipEventIfExceptionFromEventConsumer() throws Exception {
-    QueuedEventConsumer eventConsumer =
-        new QueuedEventConsumer(new ExceptionalEventConsumer());
+    QueuedEventConsumer<SequenceEvent> eventConsumer =
+        new QueuedEventConsumer<>(new ExceptionalEventConsumer());
 
     eventConsumer.enqueue(firstEvent);
     waitAtMost(5, SECONDS).until(() -> eventConsumer.queueSize() == 0);
@@ -73,7 +76,7 @@ public class QueuedEventConsumerTest {
     assertThat(trackedEvents.get(1), is(secondEvent));
   }
 
-  @Test(expected = QueuedEventConsumer.IsClosed.class)
+  @Test(expected = IsClosed.class)
   public void shouldRejectEventIfClosed() throws Exception {
     consumer.close();
     consumer.enqueue(firstEvent);
@@ -81,24 +84,24 @@ public class QueuedEventConsumerTest {
 
   @Test
   public void ShouldCloseGracefully() throws Exception {
-    QueuedEventConsumer eventConsumer =
-        new QueuedEventConsumer(new SlowInjectingEventConsumer());
+    QueuedEventConsumer<SequenceEvent> eventConsumer =
+        new QueuedEventConsumer<>(new SlowInjectingEventConsumer());
 
     eventConsumer.enqueue(firstEvent);
     eventConsumer.close();
     assertThat(trackedEvents.get(0), is(firstEvent));
   }
 
-  private class InjectingEventConsumer implements EventConsumer {
+  private class InjectingEventConsumer implements Consumer<SequenceEvent> {
     @Override
-    public void event(SequenceEvent sequenceEvent) {
+    public void accept(SequenceEvent sequenceEvent) {
       trackedEvents.add(sequenceEvent);
     }
   }
 
-  private class SlowInjectingEventConsumer implements EventConsumer {
+  private class SlowInjectingEventConsumer implements Consumer<SequenceEvent> {
     @Override
-    public void event(SequenceEvent sequenceEvent) {
+    public void accept(SequenceEvent sequenceEvent) {
       try {
         //Todo better
         Thread.sleep(1000);
@@ -109,9 +112,9 @@ public class QueuedEventConsumerTest {
     }
   }
 
-  private class ExceptionalEventConsumer implements EventConsumer {
+  private class ExceptionalEventConsumer implements Consumer<SequenceEvent> {
     @Override
-    public void event(SequenceEvent sequenceEvent) {
+    public void accept(SequenceEvent sequenceEvent) {
       try {
         //Todo better
         Thread.sleep(1000);

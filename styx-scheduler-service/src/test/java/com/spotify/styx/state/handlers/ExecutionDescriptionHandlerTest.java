@@ -54,6 +54,7 @@ import com.spotify.styx.storage.InMemStorage;
 import com.spotify.styx.storage.Storage;
 import com.spotify.styx.testdata.TestData;
 import com.spotify.styx.util.DockerImageValidator;
+import com.spotify.styx.util.IsClosed;
 import java.io.IOException;
 import java.util.Collections;
 import org.hamcrest.Matchers;
@@ -236,7 +237,7 @@ public class ExecutionDescriptionHandlerTest {
 
     doCallRealMethod()
         .doCallRealMethod()
-        .doThrow(StateManager.IsClosed.class)
+        .doThrow(IsClosed.class)
         .when(stateManager).receive(any(Event.class));
 
     storage.storeWorkflow(workflow);

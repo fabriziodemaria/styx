@@ -34,6 +34,7 @@ import com.spotify.styx.state.RunState;
 import com.spotify.styx.state.StateManager;
 import com.spotify.styx.storage.Storage;
 import com.spotify.styx.util.DockerImageValidator;
+import com.spotify.styx.util.IsClosed;
 import com.spotify.styx.util.MissingRequiredPropertyException;
 import com.spotify.styx.util.ResourceNotFoundException;
 import java.io.IOException;
@@ -74,7 +75,7 @@ public class ExecutionDescriptionHandler implements OutputHandler {
               state.workflowInstance(), getExecDescription(workflowInstance), createExecutionId());
           try {
             stateManager.receive(submitEvent);
-          } catch (StateManager.IsClosed isClosed) {
+          } catch (IsClosed isClosed) {
             LOG.warn("Could not send 'submit' event", isClosed);
           }
         } catch (ResourceNotFoundException e) {
@@ -89,7 +90,7 @@ public class ExecutionDescriptionHandler implements OutputHandler {
           try {
             LOG.error("Failed to retrieve execution description for " + state.workflowInstance().toKey(), e);
             stateManager.receive(Event.runError(state.workflowInstance(), e.getMessage()));
-          } catch (StateManager.IsClosed isClosed) {
+          } catch (IsClosed isClosed) {
             LOG.warn("Failed to send 'runError' event", isClosed);
           }
         }

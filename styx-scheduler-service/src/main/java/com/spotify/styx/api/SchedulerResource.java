@@ -38,6 +38,7 @@ import com.spotify.styx.serialization.Json;
 import com.spotify.styx.state.StateManager;
 import com.spotify.styx.state.Trigger;
 import com.spotify.styx.storage.Storage;
+import com.spotify.styx.util.IsClosed;
 import com.spotify.styx.util.RandomGenerator;
 import com.spotify.styx.util.Time;
 import java.io.IOException;
@@ -94,7 +95,7 @@ public class SchedulerResource {
 
     try {
       stateManager.receive(event);
-    } catch (StateManager.IsClosed isClosed) {
+    } catch (IsClosed isClosed) {
       return Response.forStatus(INTERNAL_SERVER_ERROR);
     }
 

@@ -57,13 +57,14 @@ import com.spotify.styx.api.SchedulerResource;
 import com.spotify.styx.docker.DockerRunner;
 import com.spotify.styx.docker.WorkflowValidator;
 import com.spotify.styx.model.Event;
+import com.spotify.styx.model.SequenceEvent;
 import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowId;
 import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.monitoring.MetricsStats;
 import com.spotify.styx.monitoring.MonitoringHandler;
 import com.spotify.styx.monitoring.Stats;
-import com.spotify.styx.publisher.EventConsumer;
+import com.spotify.styx.publisher.NoopEventConsumer;
 import com.spotify.styx.publisher.Publisher;
 import com.spotify.styx.schedule.ScheduleSource;
 import com.spotify.styx.schedule.ScheduleSourceFactory;
@@ -83,6 +84,7 @@ import com.spotify.styx.storage.Storage;
 import com.spotify.styx.util.CachedSupplier;
 import com.spotify.styx.util.Debug;
 import com.spotify.styx.util.DockerImageValidator;
+import com.spotify.styx.util.IsClosed;
 import com.spotify.styx.util.RetryUtil;
 import com.spotify.styx.util.StorageFactory;
 import com.spotify.styx.util.Time;
@@ -145,7 +147,7 @@ public class StyxScheduler implements AppInit {
   public interface ScheduleSources extends Supplier<Iterable<ScheduleSourceFactory>> { }
   public interface StatsFactory extends Function<Environment, Stats> { }
   public interface PublisherFactory extends Function<Environment, Publisher> { }
-  public interface EventConsumerFactory extends Function<Environment, EventConsumer> { }
+  public interface EventConsumerFactory extends Function<Environment, Consumer<SequenceEvent>> { }
 
   @FunctionalInterface
   interface DockerRunnerFactory {
@@ -176,7 +178,7 @@ public class StyxScheduler implements AppInit {
     private PublisherFactory publisherFactory = (env) -> Publisher.NOOP;
     private RetryUtil retryUtil = DEFAULT_RETRY_UTIL;
     private WorkflowResourceDecorator resourceDecorator = WorkflowResourceDecorator.NOOP;
-    private EventConsumerFactory eventConsumerFactory = (env) -> EventConsumer.NOOP;
+    private EventConsumerFactory eventConsumerFactory = (env) -> NoopEventConsumer.NOOP;
 
     public Builder setTime(Time time) {
       this.time = time;
@@ -304,8 +306,8 @@ public class StyxScheduler implements AppInit {
 
     warmUpCache(workflowCache, storage);
 
-    final QueuedEventConsumer consumer = closer.register(
-        new QueuedEventConsumer(eventConsumerFactory.apply(environment)));
+    final QueuedEventConsumer<SequenceEvent> consumer = closer.register(
+        new QueuedEventConsumer<>(eventConsumerFactory.apply(environment)));
 
     final QueuedStateManager stateManager = closer.register(
         new QueuedStateManager(time, eventWorker, storage, consumer));
@@ -373,7 +375,7 @@ public class StyxScheduler implements AppInit {
   }
 
   @VisibleForTesting
-  void receive(Event event) throws StateManager.IsClosed {
+  void receive(Event event) throws IsClosed {
     stateManager.receive(event);
   }
 

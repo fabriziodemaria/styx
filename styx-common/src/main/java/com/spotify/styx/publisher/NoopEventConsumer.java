@@ -21,10 +21,16 @@
 package com.spotify.styx.publisher;
 
 import com.spotify.styx.model.SequenceEvent;
+import java.util.function.Consumer;
 
-public class NoopEventConsumer implements EventConsumer {
+public class NoopEventConsumer implements Consumer<SequenceEvent> {
+
+  public static NoopEventConsumer NOOP = new NoopEventConsumer();
+
+  private NoopEventConsumer() {
+  }
 
   @Override
-  public void event(SequenceEvent sequenceEvent) {
+  public void accept(SequenceEvent sequenceEvent) {
   }
 }
