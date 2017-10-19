@@ -18,23 +18,11 @@
  * -/-/-
  */
 
-package com.spotify.styx.publisher;
-
-import com.spotify.styx.model.SequenceEvent;
+package com.spotify.styx.util;
 
 /**
- * Interface for acting on internal Styx events. For example, this can be used to publish internal
- * Styx events to third-party databases. Events will be consumed on a dedicated thread pool.
+ * Exception that signals a closed state.
  */
-public interface EventConsumer {
+public class IsClosed extends Exception {
 
-  /**
-   * Called when a state machine transition happens due to a new internal Styx event.
-   *
-   * @param sequenceEvent The {@link SequenceEvent} that caused the internal state machine
-   *                      transition
-   */
-  void event(SequenceEvent sequenceEvent);
-
-  EventConsumer NOOP = new NoopEventConsumer();
 }

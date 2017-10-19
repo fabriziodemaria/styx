@@ -23,6 +23,7 @@ package com.spotify.styx.state;
 import com.spotify.styx.model.Event;
 import com.spotify.styx.model.WorkflowId;
 import com.spotify.styx.model.WorkflowInstance;
+import com.spotify.styx.util.IsClosed;
 import java.io.Closeable;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
@@ -108,13 +109,6 @@ public interface StateManager extends Closeable {
    * @return The RunState associated with the workflow instance
    */
   RunState get(WorkflowInstance workflowInstance);
-
-  /**
-   * Exception that signals that the {@link StateManager} is in a closed state.
-   */
-  class IsClosed extends Exception {
-
-  }
 
   Logger LOG = LoggerFactory.getLogger(StateManager.class);
 }
