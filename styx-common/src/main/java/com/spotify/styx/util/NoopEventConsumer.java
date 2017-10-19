@@ -18,7 +18,7 @@
  * -/-/-
  */
 
-package com.spotify.styx.publisher;
+package com.spotify.styx.util;
 
 import com.spotify.styx.model.SequenceEvent;
 import java.util.function.Consumer;
