@@ -36,15 +36,15 @@ import org.slf4j.LoggerFactory;
  * Single threaded asynchronous event consumer queue. It requires a {@link Consumer}
  * implementation to act upon the queued events of type {@link T}.
  */
-public class QueuedEventConsumer<T> implements Closeable {
+public class EventFeeder<T> implements Closeable {
 
-  private static final Logger LOG = LoggerFactory.getLogger(QueuedEventConsumer.class);
+  private static final Logger LOG = LoggerFactory.getLogger(EventFeeder.class);
   private static final int SHUTDOWN_GRACE_PERIOD_SECONDS = 5;
 
   private final Consumer<T> eventConsumer;
   private final ThreadPoolExecutor executor;
 
-  public QueuedEventConsumer(Consumer<T> eventConsumer) {
+  public EventFeeder(Consumer<T> eventConsumer) {
     this.eventConsumer = Objects.requireNonNull(eventConsumer);
     this.executor = new ThreadPoolExecutor(1,1,0L,
         TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());

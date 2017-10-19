@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import org.junit.Test;
 
-public class QueuedEventConsumerTest {
+public class EventFeederTest {
   private final static WorkflowInstance wfi = WorkflowInstance.create(
       WorkflowId.create("comp1", "work1"),
       "2017-01-01");
@@ -46,20 +46,20 @@ public class QueuedEventConsumerTest {
       Event.dequeue(wfi),0,0);
 
   private List<SequenceEvent> trackedEvents = Lists.newArrayList();
-  private QueuedEventConsumer<SequenceEvent> consumer =
-      new QueuedEventConsumer<>(new InjectingEventConsumer());
+  private EventFeeder<SequenceEvent> eventFeeder =
+      new EventFeeder<>(new InjectingEventConsumer());
 
   @Test
   public void shouldConsumeEvent() throws Exception {
-    consumer.enqueue(firstEvent);
+    eventFeeder.enqueue(firstEvent);
     await().atMost(5, SECONDS).until(() -> trackedEvents.get(0) != null);
     assertThat(trackedEvents.get(0), is(firstEvent));
   }
 
   @Test
   public void shouldSkipEventIfExceptionFromEventConsumer() throws Exception {
-    QueuedEventConsumer<SequenceEvent> eventConsumer =
-        new QueuedEventConsumer<>(new ExceptionalEventConsumer());
+    EventFeeder<SequenceEvent> eventConsumer =
+        new EventFeeder<>(new ExceptionalEventConsumer());
 
     eventConsumer.enqueue(firstEvent);
     waitAtMost(5, SECONDS).until(() -> eventConsumer.queueSize() == 0);
@@ -68,8 +68,8 @@ public class QueuedEventConsumerTest {
 
   @Test
   public void shouldConsumeMoreEvents() throws Exception {
-    consumer.enqueue(firstEvent);
-    consumer.enqueue(secondEvent);
+    eventFeeder.enqueue(firstEvent);
+    eventFeeder.enqueue(secondEvent);
     await().atMost(5, SECONDS).until(() -> trackedEvents.get(0) != null);
     await().atMost(5, SECONDS).until(() -> trackedEvents.get(1) != null);
     assertThat(trackedEvents.get(0), is(firstEvent));
@@ -78,14 +78,14 @@ public class QueuedEventConsumerTest {
 
   @Test(expected = IsClosed.class)
   public void shouldRejectEventIfClosed() throws Exception {
-    consumer.close();
-    consumer.enqueue(firstEvent);
+    eventFeeder.close();
+    eventFeeder.enqueue(firstEvent);
   }
 
   @Test
   public void ShouldCloseGracefully() throws Exception {
-    QueuedEventConsumer<SequenceEvent> eventConsumer =
-        new QueuedEventConsumer<>(new SlowInjectingEventConsumer());
+    EventFeeder<SequenceEvent> eventConsumer =
+        new EventFeeder<>(new SlowInjectingEventConsumer());
 
     eventConsumer.enqueue(firstEvent);
     eventConsumer.close();

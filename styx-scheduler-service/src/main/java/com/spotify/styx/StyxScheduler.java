@@ -68,8 +68,8 @@ import com.spotify.styx.publisher.NoopEventConsumer;
 import com.spotify.styx.publisher.Publisher;
 import com.spotify.styx.schedule.ScheduleSource;
 import com.spotify.styx.schedule.ScheduleSourceFactory;
+import com.spotify.styx.state.EventFeeder;
 import com.spotify.styx.state.OutputHandler;
-import com.spotify.styx.state.QueuedEventConsumer;
 import com.spotify.styx.state.QueuedStateManager;
 import com.spotify.styx.state.RunState;
 import com.spotify.styx.state.StateManager;
@@ -306,11 +306,11 @@ public class StyxScheduler implements AppInit {
 
     warmUpCache(workflowCache, storage);
 
-    final QueuedEventConsumer<SequenceEvent> consumer = closer.register(
-        new QueuedEventConsumer<>(eventConsumerFactory.apply(environment)));
+    final EventFeeder<SequenceEvent> eventFeeder = closer.register(
+        new EventFeeder<>(eventConsumerFactory.apply(environment)));
 
     final QueuedStateManager stateManager = closer.register(
-        new QueuedStateManager(time, eventWorker, storage, consumer));
+        new QueuedStateManager(time, eventWorker, storage, eventFeeder));
 
     final Config staleStateTtlConfig = config.getConfig(STYX_STALE_STATE_TTL_CONFIG);
     final TimeoutConfig timeoutConfig = TimeoutConfig.createFromConfig(staleStateTtlConfig);
