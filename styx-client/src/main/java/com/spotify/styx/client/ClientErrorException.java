@@ -20,8 +20,6 @@
 
 package com.spotify.styx.client;
 
-import java.net.URI;
-
 public class ClientErrorException extends RuntimeException {
 
   public ClientErrorException(String message, Throwable cause) {
