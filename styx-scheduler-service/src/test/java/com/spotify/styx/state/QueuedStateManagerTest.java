@@ -37,7 +37,7 @@ import com.spotify.styx.model.Event;
 import com.spotify.styx.model.ExecutionDescription;
 import com.spotify.styx.model.SequenceEvent;
 import com.spotify.styx.model.WorkflowInstance;
-import com.spotify.styx.publisher.NoopEventConsumer;
+import com.spotify.styx.util.NoopEventConsumer;
 import com.spotify.styx.storage.InMemStorage;
 import com.spotify.styx.testdata.TestData;
 import com.spotify.styx.util.IsClosed;

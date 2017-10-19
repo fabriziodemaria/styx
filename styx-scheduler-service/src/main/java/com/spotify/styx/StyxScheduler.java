@@ -64,7 +64,7 @@ import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.monitoring.MetricsStats;
 import com.spotify.styx.monitoring.MonitoringHandler;
 import com.spotify.styx.monitoring.Stats;
-import com.spotify.styx.publisher.NoopEventConsumer;
+import com.spotify.styx.util.NoopEventConsumer;
 import com.spotify.styx.publisher.Publisher;
 import com.spotify.styx.schedule.ScheduleSource;
 import com.spotify.styx.schedule.ScheduleSourceFactory;
