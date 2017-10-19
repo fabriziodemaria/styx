@@ -30,6 +30,7 @@ import com.spotify.styx.model.ExecutionDescription;
 import com.spotify.styx.state.OutputHandler;
 import com.spotify.styx.state.RunState;
 import com.spotify.styx.state.StateManager;
+import com.spotify.styx.util.IsClosed;
 import com.spotify.styx.util.ResourceNotFoundException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -72,7 +73,7 @@ public class DockerRunnerHandler implements OutputHandler {
         final Event submitted = Event.submitted(state.workflowInstance(), runSpec.executionId());
         try {
           stateManager.receive(submitted);
-        } catch (StateManager.IsClosed isClosed) {
+        } catch (IsClosed isClosed) {
           LOG.warn("Could not emit 'submitted' event", isClosed);
           return;
         }
@@ -90,7 +91,7 @@ public class DockerRunnerHandler implements OutputHandler {
               LOG.error(msg, e);
             }
             stateManager.receive(Event.runError(state.workflowInstance(), e.getMessage()));
-          } catch (StateManager.IsClosed isClosed) {
+          } catch (IsClosed isClosed) {
             LOG.warn("Failed to send 'runError' event", isClosed);
           }
         }

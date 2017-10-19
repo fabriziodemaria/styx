@@ -18,23 +18,19 @@
  * -/-/-
  */
 
-package com.spotify.styx.publisher;
+package com.spotify.styx.util;
 
 import com.spotify.styx.model.SequenceEvent;
+import java.util.function.Consumer;
 
-/**
- * Interface for acting on internal Styx events. For example, this can be used to publish internal
- * Styx events to third-party databases.
- */
-public interface EventInterceptor {
+public class NoopEventConsumer implements Consumer<SequenceEvent> {
 
-  /**
-   * Called when a state machine transition happens due to a new internal Styx event.
-   *
-   * @param sequenceEvent The {@link SequenceEvent} that caused the internal state machine
-   *                      transition
-   */
-  void interceptedEvent(SequenceEvent sequenceEvent);
+  public static NoopEventConsumer NOOP = new NoopEventConsumer();
 
-  EventInterceptor NOOP = new NoopEventInterceptor();
+  private NoopEventConsumer() {
+  }
+
+  @Override
+  public void accept(SequenceEvent sequenceEvent) {
+  }
 }

@@ -1,6 +1,6 @@
 /*-
  * -\-\-
- * Spotify Styx Scheduler Service
+ * Spotify Styx Common
  * --
  * Copyright (C) 2016 - 2017 Spotify AB
  * --
@@ -18,18 +18,11 @@
  * -/-/-
  */
 
-package com.spotify.styx.state;
+package com.spotify.styx.util;
 
-import com.spotify.styx.model.SequenceEvent;
-import java.io.IOException;
+/**
+ * Exception that signals a closed state.
+ */
+public class IsClosed extends Exception {
 
-public class NoopEventConsumer implements EventConsumer {
-
-  @Override
-  public void processedEvent(SequenceEvent sequenceEvent) throws IsClosed {
-  }
-
-  @Override
-  public void close() throws IOException {
-  }
 }

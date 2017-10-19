@@ -37,10 +37,11 @@ import com.spotify.styx.model.Event;
 import com.spotify.styx.model.ExecutionDescription;
 import com.spotify.styx.model.SequenceEvent;
 import com.spotify.styx.model.WorkflowInstance;
+import com.spotify.styx.util.NoopEventConsumer;
 import com.spotify.styx.storage.InMemStorage;
 import com.spotify.styx.testdata.TestData;
+import com.spotify.styx.util.IsClosed;
 import java.time.Instant;
-import java.util.Collections;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.Stack;
@@ -65,6 +66,8 @@ public class QueuedStateManagerTest {
   private static final Trigger TRIGGER1 = Trigger.unknown("trig1");
   private static final Trigger TRIGGER2 = Trigger.unknown("trig2");
   private static final Trigger TRIGGER3 = Trigger.unknown("trig3");
+  private static final EventFeeder<SequenceEvent> eventFeeder =
+      new EventFeeder<>(NoopEventConsumer.NOOP);
 
   private static final ExecutorService POOL = Executors.newFixedThreadPool(16);
 
@@ -86,7 +89,7 @@ public class QueuedStateManagerTest {
     }
 
     storage = new InMemStorage();
-    stateManager = new QueuedStateManager(Instant::now, POOL, storage, EventConsumer.NOOP);
+    stateManager = new QueuedStateManager(Instant::now, POOL, storage, eventFeeder);
 
     stateManager.initialize(initial);
     assertTrue(stateManager.awaitIdle(1000));
@@ -150,7 +153,7 @@ public class QueuedStateManagerTest {
     stateManager.initialize(RunState.fresh(INSTANCE));
   }
 
-  @Test(expected = StateManager.IsClosed.class)
+  @Test(expected = IsClosed.class)
   public void shouldRejectInitializeIfClosed() throws Exception {
     setUp();
 
@@ -158,7 +161,7 @@ public class QueuedStateManagerTest {
     stateManager.initialize(RunState.fresh(INSTANCE));
   }
 
-  @Test(expected = StateManager.IsClosed.class)
+  @Test(expected = IsClosed.class)
   public void shouldRejectEventIfClosed() throws Exception {
     setUp();
 
@@ -276,7 +279,7 @@ public class QueuedStateManagerTest {
 
   @Test
   public void shouldRestoreStateAtCount() throws Exception {
-    stateManager = new QueuedStateManager(Instant::now, POOL, storage, EventConsumer.NOOP);
+    stateManager = new QueuedStateManager(Instant::now, POOL, storage, eventFeeder);
 
     stateManager.restore(RunState.fresh(INSTANCE), 7L);
     stateManager.receive(Event.timeTrigger(INSTANCE));  // 8
@@ -289,7 +292,7 @@ public class QueuedStateManagerTest {
 
   @Test
   public void shouldHandleThrowingOutputHandler() throws Exception {
-    stateManager = new QueuedStateManager(Instant::now, POOL, storage, EventConsumer.NOOP);
+    stateManager = new QueuedStateManager(Instant::now, POOL, storage, eventFeeder);
 
     OutputHandler throwing = (state) -> {
       throw new RuntimeException();
@@ -303,7 +306,7 @@ public class QueuedStateManagerTest {
 
   @Test
   public void testGetActiveWorkflowInstance() throws Exception {
-    stateManager = new QueuedStateManager(Instant::now, POOL, storage, EventConsumer.NOOP);
+    stateManager = new QueuedStateManager(Instant::now, POOL, storage, eventFeeder);
 
     assertThat(stateManager.isActiveWorkflowInstance(INSTANCE), is(false));
 
@@ -333,7 +336,7 @@ public class QueuedStateManagerTest {
         stateManager.receive(Event.terminate(instance, Optional.of(20)));
         stateManager.receive(Event.retryAfter(instance, 300));
         stateManager.receive(Event.dequeue(instance));
-      } catch (StateManager.IsClosed ignored) {
+      } catch (IsClosed ignored) {
       }
     };
 
@@ -350,7 +353,7 @@ public class QueuedStateManagerTest {
           stateManager.initialize(RunState.fresh(instance));
           stateManager.receive(Event.triggerExecution(instance, TRIGGER1));
           stateManager.receive(Event.dequeue(instance));
-        } catch (StateManager.IsClosed ignored) {
+        } catch (IsClosed ignored) {
         }
 
         initLatch.countDown();

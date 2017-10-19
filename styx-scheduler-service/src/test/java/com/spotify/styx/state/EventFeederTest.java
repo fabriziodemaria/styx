@@ -31,74 +31,77 @@ import com.spotify.styx.model.Event;
 import com.spotify.styx.model.SequenceEvent;
 import com.spotify.styx.model.WorkflowId;
 import com.spotify.styx.model.WorkflowInstance;
-import com.spotify.styx.publisher.EventInterceptor;
+import com.spotify.styx.util.IsClosed;
 import java.util.List;
+import java.util.function.Consumer;
 import org.junit.Test;
 
-public class QueuedEventConsumerTest {
-  private List<SequenceEvent> trackedEvents = Lists.newArrayList();
-  private QueuedEventConsumer eventConsumer = new QueuedEventConsumer(new InjectingInterceptor());
+public class EventFeederTest {
   private final static WorkflowInstance wfi = WorkflowInstance.create(
       WorkflowId.create("comp1", "work1"),
       "2017-01-01");
   private final static SequenceEvent firstEvent = SequenceEvent.create(
-      Event.triggerExecution(wfi, Trigger.natural()), 0, 0);
+      Event.triggerExecution(wfi, Trigger.natural()),0,0);
   private final static SequenceEvent secondEvent = SequenceEvent.create(
-      Event.dequeue(wfi), 0, 0);
+      Event.dequeue(wfi),0,0);
+
+  private List<SequenceEvent> trackedEvents = Lists.newArrayList();
+  private EventFeeder<SequenceEvent> eventFeeder =
+      new EventFeeder<>(new InjectingEventConsumer());
 
   @Test
   public void shouldConsumeEvent() throws Exception {
-    eventConsumer.processedEvent(firstEvent);
+    eventFeeder.enqueue(firstEvent);
     await().atMost(5, SECONDS).until(() -> trackedEvents.get(0) != null);
     assertThat(trackedEvents.get(0), is(firstEvent));
   }
 
   @Test
-  public void shouldSkipEventIfExceptionFromEventInterceptor() throws Exception {
-    QueuedEventConsumer eventConsumer =
-        new QueuedEventConsumer(new ExceptionalInterceptor());
+  public void shouldSkipEventIfExceptionFromEventConsumer() throws Exception {
+    EventFeeder<SequenceEvent> eventConsumer =
+        new EventFeeder<>(new ExceptionalEventConsumer());
 
-    eventConsumer.processedEvent(firstEvent);
+    eventConsumer.enqueue(firstEvent);
     waitAtMost(5, SECONDS).until(() -> eventConsumer.queueSize() == 0);
     assertThat(trackedEvents.size(), is(0));
   }
 
   @Test
   public void shouldConsumeMoreEvents() throws Exception {
-    eventConsumer.processedEvent(firstEvent);
-    eventConsumer.processedEvent(secondEvent);
+    eventFeeder.enqueue(firstEvent);
+    eventFeeder.enqueue(secondEvent);
     await().atMost(5, SECONDS).until(() -> trackedEvents.get(0) != null);
     await().atMost(5, SECONDS).until(() -> trackedEvents.get(1) != null);
     assertThat(trackedEvents.get(0), is(firstEvent));
     assertThat(trackedEvents.get(1), is(secondEvent));
   }
 
-  @Test(expected = QueuedEventConsumer.IsClosed.class)
+  @Test(expected = IsClosed.class)
   public void shouldRejectEventIfClosed() throws Exception {
-    eventConsumer.close();
-    eventConsumer.processedEvent(firstEvent);
+    eventFeeder.close();
+    eventFeeder.enqueue(firstEvent);
   }
 
   @Test
   public void ShouldCloseGracefully() throws Exception {
-    QueuedEventConsumer eventConsumer =
-        new QueuedEventConsumer(new SlowInjectingInterceptor());
+    EventFeeder<SequenceEvent> eventConsumer =
+        new EventFeeder<>(new SlowInjectingEventConsumer());
 
-    eventConsumer.processedEvent(firstEvent);
+    eventConsumer.enqueue(firstEvent);
     eventConsumer.close();
     assertThat(trackedEvents.get(0), is(firstEvent));
   }
 
-  private class InjectingInterceptor implements EventInterceptor {
+  private class InjectingEventConsumer implements Consumer<SequenceEvent> {
     @Override
-    public void interceptedEvent(SequenceEvent sequenceEvent) {
+    public void accept(SequenceEvent sequenceEvent) {
       trackedEvents.add(sequenceEvent);
     }
   }
 
-  private class SlowInjectingInterceptor implements EventInterceptor {
+  private class SlowInjectingEventConsumer implements Consumer<SequenceEvent> {
     @Override
-    public void interceptedEvent(SequenceEvent sequenceEvent) {
+    public void accept(SequenceEvent sequenceEvent) {
       try {
         //Todo better
         Thread.sleep(1000);
@@ -109,9 +112,9 @@ public class QueuedEventConsumerTest {
     }
   }
 
-  private class ExceptionalInterceptor implements EventInterceptor {
+  private class ExceptionalEventConsumer implements Consumer<SequenceEvent> {
     @Override
-    public void interceptedEvent(SequenceEvent sequenceEvent) {
+    public void accept(SequenceEvent sequenceEvent) {
       try {
         //Todo better
         Thread.sleep(1000);
