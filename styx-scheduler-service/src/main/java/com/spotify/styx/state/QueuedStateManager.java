@@ -281,8 +281,6 @@ public class QueuedStateManager implements StateManager {
 
     try {
       storeEvent(sequenceEvent);
-      // racy...
-      consumeEvent(sequenceEvent);
 
       if (state.state().isTerminal()) {
         states.remove(key); // racy when states are re-initialized concurrent with termination
@@ -299,6 +297,10 @@ public class QueuedStateManager implements StateManager {
       processed.completeExceptionally(t);
       throw t;
     }
+
+    // If the service is stopped right before this line, the event was successfully stored but never
+    // going to be consumed. Event consumption is only best effort with the current implementation.
+    consumeEvent(sequenceEvent);
 
     activeEvents.incrementAndGet();
     outputHandlerExecutor.execute(() -> {
