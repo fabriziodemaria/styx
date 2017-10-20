@@ -31,7 +31,7 @@ import com.spotify.styx.model.WorkflowId;
 import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.storage.Storage;
 import com.spotify.styx.util.AlreadyInitializedException;
-import com.spotify.styx.util.IsClosed;
+import com.spotify.styx.util.IsClosedException;
 import com.spotify.styx.util.Time;
 import java.io.IOException;
 import java.util.Map;
@@ -103,7 +103,7 @@ public class QueuedStateManager implements StateManager {
   }
 
   @Override
-  public void initialize(RunState runState) throws IsClosed {
+  public void initialize(RunState runState) throws IsClosedException {
     ensureRunning();
 
     final WorkflowInstance workflowInstance = runState.workflowInstance();
@@ -134,7 +134,7 @@ public class QueuedStateManager implements StateManager {
   }
 
   @Override
-  public CompletionStage<Void> receive(Event event) throws IsClosed {
+  public CompletionStage<Void> receive(Event event) throws IsClosedException {
     ensureRunning();
 
     final InstanceState state = states.get(event.workflowInstance());
@@ -252,9 +252,9 @@ public class QueuedStateManager implements StateManager {
     }
   }
 
-  private void ensureRunning() throws IsClosed {
+  private void ensureRunning() throws IsClosedException {
     if (!running) {
-      throw new IsClosed();
+      throw new IsClosedException();
     }
   }
 

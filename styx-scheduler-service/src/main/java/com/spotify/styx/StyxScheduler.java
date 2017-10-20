@@ -82,7 +82,7 @@ import com.spotify.styx.storage.Storage;
 import com.spotify.styx.util.CachedSupplier;
 import com.spotify.styx.util.Debug;
 import com.spotify.styx.util.DockerImageValidator;
-import com.spotify.styx.util.IsClosed;
+import com.spotify.styx.util.IsClosedException;
 import com.spotify.styx.util.RetryUtil;
 import com.spotify.styx.util.StorageFactory;
 import com.spotify.styx.util.Time;
@@ -374,7 +374,7 @@ public class StyxScheduler implements AppInit {
   }
 
   @VisibleForTesting
-  void receive(Event event) throws IsClosed {
+  void receive(Event event) throws IsClosedException {
     stateManager.receive(event);
   }
 

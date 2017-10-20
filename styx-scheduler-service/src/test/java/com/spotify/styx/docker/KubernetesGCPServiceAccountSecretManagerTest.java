@@ -48,7 +48,7 @@ import com.spotify.styx.ServiceAccountKeyManager;
 import com.spotify.styx.docker.DockerRunner.RunSpec;
 import com.spotify.styx.docker.KubernetesDockerRunner.KubernetesSecretSpec;
 import com.spotify.styx.model.WorkflowInstance;
-import com.spotify.styx.util.IsClosed;
+import com.spotify.styx.util.IsClosedException;
 import io.fabric8.kubernetes.api.model.DoneablePod;
 import io.fabric8.kubernetes.api.model.DoneableSecret;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
@@ -153,7 +153,7 @@ public class KubernetesGCPServiceAccountSecretManagerTest {
   }
 
   @Test
-  public void shouldCreateServiceAccountKeysAndSecret() throws IsClosed, IOException {
+  public void shouldCreateServiceAccountKeysAndSecret() throws IsClosedException, IOException {
 
     when(serviceAccountKeyManager.serviceAccountExists(SERVICE_ACCOUNT)).thenReturn(true);
 
@@ -180,7 +180,7 @@ public class KubernetesGCPServiceAccountSecretManagerTest {
 
   @Test
   public void shouldNotConcurrentlyCreateServiceAccountKeysAndSecrets()
-      throws IsClosed, IOException, ExecutionException, InterruptedException {
+      throws IsClosedException, IOException, ExecutionException, InterruptedException {
 
     final ServiceAccountKey jsonKey = new ServiceAccountKey();
     jsonKey.setName("key.json");
@@ -407,7 +407,7 @@ public class KubernetesGCPServiceAccountSecretManagerTest {
   }
 
   @Test
-  public void shouldUseExistingServiceAccountSecret() throws IsClosed, IOException {
+  public void shouldUseExistingServiceAccountSecret() throws IsClosedException, IOException {
 
     final String jsonKeyId = "json-key";
     final String p12KeyId = "p12-key";
@@ -433,7 +433,7 @@ public class KubernetesGCPServiceAccountSecretManagerTest {
   }
 
   @Test
-  public void shouldFailIfServiceAccountDoesNotExist() throws IsClosed, IOException {
+  public void shouldFailIfServiceAccountDoesNotExist() throws IsClosedException, IOException {
     when(serviceAccountKeyManager.serviceAccountExists(SERVICE_ACCOUNT)).thenReturn(false);
 
     exception.expect(InvalidExecutionException.class);

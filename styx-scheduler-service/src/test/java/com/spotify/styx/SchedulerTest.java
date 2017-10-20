@@ -54,7 +54,7 @@ import com.spotify.styx.state.StateManager;
 import com.spotify.styx.state.SyncStateManager;
 import com.spotify.styx.state.TimeoutConfig;
 import com.spotify.styx.storage.Storage;
-import com.spotify.styx.util.IsClosed;
+import com.spotify.styx.util.IsClosedException;
 import com.spotify.styx.util.Time;
 import java.io.IOException;
 import java.time.Instant;
@@ -111,7 +111,7 @@ public class SchedulerTest {
     executor.shutdownNow();
   }
 
-  private void setUp(int timeoutSeconds) throws IsClosed, IOException {
+  private void setUp(int timeoutSeconds) throws IsClosedException, IOException {
     workflowCache = new InMemWorkflowCache();
     TimeoutConfig timeoutConfig = createWithDefaultTtl(ofSeconds(timeoutSeconds));
 
@@ -137,7 +137,7 @@ public class SchedulerTest {
     workflowCache.store(workflow);
   }
 
-  private void init(RunState runState) throws IsClosed {
+  private void init(RunState runState) throws IsClosedException {
     stateManager.initialize(runState);
   }
 

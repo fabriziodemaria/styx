@@ -23,6 +23,6 @@ package com.spotify.styx.util;
 /**
  * Exception that signals a closed state.
  */
-public class IsClosed extends Exception {
+public class IsClosedException extends Exception {
 
 }

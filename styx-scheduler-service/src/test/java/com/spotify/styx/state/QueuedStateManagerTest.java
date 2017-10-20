@@ -39,7 +39,7 @@ import com.spotify.styx.model.SequenceEvent;
 import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.storage.InMemStorage;
 import com.spotify.styx.testdata.TestData;
-import com.spotify.styx.util.IsClosed;
+import com.spotify.styx.util.IsClosedException;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.SortedSet;
@@ -153,7 +153,7 @@ public class QueuedStateManagerTest {
     stateManager.initialize(RunState.fresh(INSTANCE));
   }
 
-  @Test(expected = IsClosed.class)
+  @Test(expected = IsClosedException.class)
   public void shouldRejectInitializeIfClosed() throws Exception {
     setUp();
 
@@ -161,7 +161,7 @@ public class QueuedStateManagerTest {
     stateManager.initialize(RunState.fresh(INSTANCE));
   }
 
-  @Test(expected = IsClosed.class)
+  @Test(expected = IsClosedException.class)
   public void shouldRejectEventIfClosed() throws Exception {
     setUp();
 
@@ -336,7 +336,7 @@ public class QueuedStateManagerTest {
         stateManager.receive(Event.terminate(instance, Optional.of(20)));
         stateManager.receive(Event.retryAfter(instance, 300));
         stateManager.receive(Event.dequeue(instance));
-      } catch (IsClosed ignored) {
+      } catch (IsClosedException ignored) {
       }
     };
 
@@ -353,7 +353,7 @@ public class QueuedStateManagerTest {
           stateManager.initialize(RunState.fresh(instance));
           stateManager.receive(Event.triggerExecution(instance, TRIGGER1));
           stateManager.receive(Event.dequeue(instance));
-        } catch (IsClosed ignored) {
+        } catch (IsClosedException ignored) {
         }
 
         initLatch.countDown();
