@@ -23,7 +23,7 @@ package com.spotify.styx.state;
 import com.spotify.styx.model.Event;
 import com.spotify.styx.model.WorkflowId;
 import com.spotify.styx.model.WorkflowInstance;
-import com.spotify.styx.util.IsClosed;
+import com.spotify.styx.util.IsClosedException;
 import java.io.Closeable;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
@@ -39,9 +39,9 @@ public interface StateManager extends Closeable {
    * Initializes a {@link RunState} which makes it actively tracked.
    *
    * @param runState The state to initialize
-   * @throws IsClosed if the state receiver is closed and can not handle events
+   * @throws IsClosedException if the state receiver is closed and can not handle events
    */
-  void initialize(RunState runState) throws IsClosed;
+  void initialize(RunState runState) throws IsClosedException;
 
   /**
    * Restore a {@link RunState} and track it from the given sequence count.
@@ -56,9 +56,9 @@ public interface StateManager extends Closeable {
    * the {@link Event#workflowInstance()} key of the event.
    *
    * @param event The event to receive
-   * @throws IsClosed if the state receiver is closed and can not handle events
+   * @throws IsClosedException if the state receiver is closed and can not handle events
    */
-  CompletionStage<Void> receive(Event event) throws IsClosed;
+  CompletionStage<Void> receive(Event event) throws IsClosedException;
 
   /**
    * Get a map of all active {@link WorkflowInstance} states.
@@ -90,15 +90,15 @@ public interface StateManager extends Closeable {
   boolean isActiveWorkflowInstance(WorkflowInstance workflowInstance);
 
   /**
-   * Like {@link #receive(Event)} but ignoring the {@link IsClosed} exception.
+   * Like {@link #receive(Event)} but ignoring the {@link IsClosedException} exception.
    *
    * @param event The event to receive
    */
   default void receiveIgnoreClosed(Event event) {
     try {
       receive(event);
-    } catch (IsClosed isClosed) {
-      LOG.info("Ignored event, state receiver closed", isClosed);
+    } catch (IsClosedException isClosedException) {
+      LOG.info("Ignored event, state receiver closed", isClosedException);
     }
   }
 

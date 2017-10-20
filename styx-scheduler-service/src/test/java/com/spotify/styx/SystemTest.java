@@ -165,7 +165,7 @@ public class SystemTest extends StyxSchedulerServiceFixture {
   }
 
   @Test
-  public void shouldCEnqueuEventsForConsumption() throws Exception {
+  public void shouldEnqueuEventsForConsumption() throws Exception {
     Workflow customWorkflow = Workflow.create(
         "styx",
         WorkflowConfiguration.builder()

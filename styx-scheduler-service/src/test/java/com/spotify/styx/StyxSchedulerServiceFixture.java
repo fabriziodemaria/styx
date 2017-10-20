@@ -49,7 +49,7 @@ import com.spotify.styx.state.RunState;
 import com.spotify.styx.storage.AggregateStorage;
 import com.spotify.styx.storage.BigtableMocker;
 import com.spotify.styx.storage.BigtableStorage;
-import com.spotify.styx.util.IsClosed;
+import com.spotify.styx.util.IsClosedException;
 import com.spotify.styx.util.StorageFactory;
 import com.spotify.styx.util.Time;
 import com.spotify.styx.util.TriggerInstantSpec;
@@ -129,7 +129,8 @@ public class StyxSchedulerServiceFixture {
     StyxScheduler.PublisherFactory publisherFactory = (env) -> Publisher.NOOP;
     StyxScheduler.DockerRunnerFactory dockerRunnerFactory =
         (id, env, states, exec, stats, debug) -> fakeDockerRunner();
-    StyxScheduler.EventConsumerFactory eventConsumerFactory = (env) -> new InjectingEventConsumer();
+    StyxScheduler.EventConsumerFactory eventConsumerFactory =
+        (env) -> (event) -> transitionedEvents.add(event);
 
     styxScheduler = StyxScheduler.newBuilder()
         .setTime(time)
@@ -158,7 +159,7 @@ public class StyxSchedulerServiceFixture {
     }
   }
 
-  void injectEvent(Event event) throws IsClosed {
+  void injectEvent(Event event) throws IsClosedException {
     styxScheduler.receive(event);
   }
 
@@ -364,12 +365,5 @@ public class StyxSchedulerServiceFixture {
       throw Throwables.propagate(e);
     }
     return bigtable;
-  }
-
-  private class InjectingEventConsumer implements Consumer<SequenceEvent> {
-    @Override
-    public void accept(SequenceEvent sequenceEvent) {
-      transitionedEvents.add(sequenceEvent);
-    }
   }
 }
