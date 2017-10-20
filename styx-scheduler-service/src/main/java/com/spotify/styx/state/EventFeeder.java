@@ -20,14 +20,9 @@
 
 package com.spotify.styx.state;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.spotify.styx.util.IsClosed;
-import java.io.Closeable;
-import java.io.IOException;
 import java.util.Objects;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,22 +31,20 @@ import org.slf4j.LoggerFactory;
  * Single threaded asynchronous event consumer queue. It requires a {@link Consumer}
  * implementation to act upon the queued events of type {@link T}.
  */
-public class EventFeeder<T> implements Closeable {
+public class EventFeeder<T> {
 
   private static final Logger LOG = LoggerFactory.getLogger(EventFeeder.class);
-  private static final int SHUTDOWN_GRACE_PERIOD_SECONDS = 5;
 
   private final Consumer<T> eventConsumer;
-  private final ThreadPoolExecutor executor;
+  private final ExecutorService executor;
 
-  public EventFeeder(Consumer<T> eventConsumer) {
+  public EventFeeder(Consumer<T> eventConsumer, ExecutorService executor) {
     this.eventConsumer = Objects.requireNonNull(eventConsumer);
-    this.executor = new ThreadPoolExecutor(1, 1, 0L,
-        TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+    this.executor = Objects.requireNonNull(executor);
   }
 
   void enqueue(T event) throws IsClosed {
-    if (executor.isTerminating() || executor.isShutdown()) {
+    if (executor.isShutdown()) {
       throw new IsClosed();
     }
     try {
@@ -59,31 +52,5 @@ public class EventFeeder<T> implements Closeable {
     } catch (Exception e) {
       LOG.warn("Exception while enqueuing event {}: {}", event, e);
     }
-  }
-
-  @VisibleForTesting
-  int queueSize() {
-    return executor.getQueue().size();
-  }
-
-  @Override
-  public void close() throws IOException {
-    if (executor.isTerminating() || executor.isShutdown()) {
-      return;
-    }
-    executor.shutdown();
-    LOG.info("Shutting down, waiting for queued events to be consumed");
-    try {
-      if (!executor.awaitTermination(SHUTDOWN_GRACE_PERIOD_SECONDS, TimeUnit.SECONDS)) {
-        executor.shutdownNow();
-        LOG.warn("Graceful shutdown failed, {} events left in queue", queueSize());
-        throw new IOException(
-            "Graceful shutdown failed, event loop did not finish within grace period");
-      }
-    } catch (InterruptedException e) {
-      executor.shutdownNow();
-      throw new IOException(e);
-    }
-    LOG.info("Shutdown was clean, {} events left in queue", queueSize());
   }
 }

@@ -177,7 +177,7 @@ public class StyxScheduler implements AppInit {
     private PublisherFactory publisherFactory = (env) -> Publisher.NOOP;
     private RetryUtil retryUtil = DEFAULT_RETRY_UTIL;
     private WorkflowResourceDecorator resourceDecorator = WorkflowResourceDecorator.NOOP;
-    private EventConsumerFactory eventConsumerFactory = (env) -> (event) -> {};
+    private EventConsumerFactory eventConsumerFactory = (env) -> (event) -> { };
 
     public Builder setTime(Time time) {
       this.time = time;
@@ -295,9 +295,11 @@ public class StyxScheduler implements AppInit {
     closer.register(publisher);
 
     final ScheduledExecutorService executor = executorFactory.create(3, schedulerTf);
-    final ExecutorService eventWorker = Executors.newFixedThreadPool(16, eventTf);
     closer.register(executorCloser("scheduler", executor));
+    final ExecutorService eventWorker = Executors.newFixedThreadPool(16, eventTf);
     closer.register(executorCloser("event-worker", eventWorker));
+    final ExecutorService eventConsumerWorker = Executors.newSingleThreadExecutor();
+    closer.register(executorCloser("event-consumer-worker", eventConsumerWorker));
 
     final Stats stats = statsFactory.apply(environment);
     final WorkflowCache workflowCache = new InMemWorkflowCache();
@@ -305,8 +307,8 @@ public class StyxScheduler implements AppInit {
 
     warmUpCache(workflowCache, storage);
 
-    final EventFeeder<SequenceEvent> eventFeeder = closer.register(
-        new EventFeeder<>(eventConsumerFactory.apply(environment)));
+    final EventFeeder<SequenceEvent> eventFeeder =
+        new EventFeeder<>(eventConsumerFactory.apply(environment), eventConsumerWorker);
 
     final QueuedStateManager stateManager = closer.register(
         new QueuedStateManager(time, eventWorker, storage, eventFeeder));

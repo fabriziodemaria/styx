@@ -40,7 +40,6 @@ import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.storage.InMemStorage;
 import com.spotify.styx.testdata.TestData;
 import com.spotify.styx.util.IsClosed;
-import com.spotify.styx.util.NoopEventConsumer;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.SortedSet;
@@ -67,7 +66,7 @@ public class QueuedStateManagerTest {
   private static final Trigger TRIGGER2 = Trigger.unknown("trig2");
   private static final Trigger TRIGGER3 = Trigger.unknown("trig3");
   private static final EventFeeder<SequenceEvent> eventFeeder =
-      new EventFeeder<>(NoopEventConsumer.NOOP);
+      new EventFeeder<>((e) -> {}, Executors.newSingleThreadExecutor());
 
   private static final ExecutorService POOL = Executors.newFixedThreadPool(16);
 

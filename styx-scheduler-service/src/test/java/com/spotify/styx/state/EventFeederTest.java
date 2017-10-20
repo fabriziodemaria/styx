@@ -22,7 +22,6 @@ package com.spotify.styx.state;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
-import static org.awaitility.Awaitility.waitAtMost;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
 
@@ -33,6 +32,8 @@ import com.spotify.styx.model.WorkflowId;
 import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.util.IsClosed;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
 import org.junit.Test;
 
@@ -43,25 +44,27 @@ public class EventFeederTest {
       Event.triggerExecution(wfi, Trigger.natural()), 0, 0);
   private final static SequenceEvent secondEvent = SequenceEvent.create(
       Event.dequeue(wfi), 0, 0);
+  private final ScheduledExecutorService executor =
+      Executors.newSingleThreadScheduledExecutor();
 
   private List<SequenceEvent> trackedEvents = Lists.newArrayList();
   private EventFeeder<SequenceEvent> eventFeeder =
-      new EventFeeder<>(new InjectingEventConsumer());
+      new EventFeeder<>(new InjectingEventConsumer(), executor);
 
   @Test
   public void shouldConsumeEvent() throws Exception {
     eventFeeder.enqueue(firstEvent);
-    await().atMost(5, SECONDS).until(() -> trackedEvents.get(0) != null);
-    assertThat(trackedEvents.get(0), is(firstEvent));
+    await().atMost(5, SECONDS).until(() -> trackedEvents.get(0).equals(firstEvent));
   }
 
   @Test
   public void shouldSkipEventIfExceptionFromEventConsumer() throws Exception {
     EventFeeder<SequenceEvent> eventConsumer =
-        new EventFeeder<>(new ExceptionalEventConsumer());
+        new EventFeeder<>(new ExceptionalEventConsumer(), executor);
 
     eventConsumer.enqueue(firstEvent);
-    waitAtMost(5, SECONDS).until(() -> eventConsumer.queueSize() == 0);
+    executor.shutdown();
+    assertThat(executor.awaitTermination(5, SECONDS), is(true));
     assertThat(trackedEvents.size(), is(0));
   }
 
@@ -69,25 +72,24 @@ public class EventFeederTest {
   public void shouldConsumeMoreEvents() throws Exception {
     eventFeeder.enqueue(firstEvent);
     eventFeeder.enqueue(secondEvent);
-    await().atMost(5, SECONDS).until(() -> trackedEvents.get(0) != null);
-    await().atMost(5, SECONDS).until(() -> trackedEvents.get(1) != null);
-    assertThat(trackedEvents.get(0), is(firstEvent));
-    assertThat(trackedEvents.get(1), is(secondEvent));
+    await().atMost(5, SECONDS).until(() -> trackedEvents.get(0).equals(firstEvent));
+    await().atMost(5, SECONDS).until(() -> trackedEvents.get(1).equals(secondEvent));
   }
 
   @Test(expected = IsClosed.class)
   public void shouldRejectEventIfClosed() throws Exception {
-    eventFeeder.close();
+    executor.shutdown();
     eventFeeder.enqueue(firstEvent);
   }
 
   @Test
   public void ShouldCloseGracefully() throws Exception {
     EventFeeder<SequenceEvent> eventConsumer =
-        new EventFeeder<>(new SlowInjectingEventConsumer());
+        new EventFeeder<>(new SlowInjectingEventConsumer(), executor);
 
     eventConsumer.enqueue(firstEvent);
-    eventConsumer.close();
+    executor.shutdown();
+    assertThat(executor.awaitTermination(5, SECONDS), is(true));
     assertThat(trackedEvents.get(0), is(firstEvent));
   }
 
