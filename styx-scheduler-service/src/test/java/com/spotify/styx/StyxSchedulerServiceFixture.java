@@ -309,7 +309,7 @@ public class StyxSchedulerServiceFixture {
     await().atMost(30, SECONDS).until(() -> getState(workflowInstance) == null);
   }
 
-  void awaitUntilEnqueuedEventForConsumption(SequenceEvent sequenceEvent) {
+  void awaitUntilConsumedEvent(SequenceEvent sequenceEvent) {
     await().atMost(30, SECONDS).until(() -> transitionedEvents.contains(sequenceEvent));
   }
 

@@ -192,7 +192,7 @@ public class SystemTest extends StyxSchedulerServiceFixture {
             0,
             Instant.parse("2016-03-14T15:30:00Z").toEpochMilli());
 
-    awaitUntilEnqueuedEventForConsumption(expectedEvent);
+    awaitUntilConsumedEvent(expectedEvent);
   }
 
   @Test

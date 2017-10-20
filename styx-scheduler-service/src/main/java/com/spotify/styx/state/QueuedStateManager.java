@@ -46,6 +46,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,9 +73,10 @@ public class QueuedStateManager implements StateManager {
   static final long NO_EVENTS_PROCESSED = -1L;
 
   private final Time time;
-  private final Executor workerPool;
+  private final Executor outputHandlerExecutor;
   private final Storage storage;
-  private final EventFeeder<SequenceEvent> eventFeeder;
+  private final Consumer<SequenceEvent> eventConsumer;
+  private final Executor eventConsumerExecutor;
 
   private final ConcurrentMap<WorkflowInstance, InstanceState> states = Maps.newConcurrentMap();
 
@@ -86,14 +88,15 @@ public class QueuedStateManager implements StateManager {
 
   public QueuedStateManager(
       Time time,
-      Executor workerPool,
+      Executor outputHandlerExecutor,
       Storage storage,
-      EventFeeder<SequenceEvent> eventFeeder) {
+      Consumer<SequenceEvent> eventConsumer,
+      Executor eventConsumerExecutor) {
     this.time = Objects.requireNonNull(time);
-    this.workerPool = Objects.requireNonNull(workerPool);
+    this.outputHandlerExecutor = Objects.requireNonNull(outputHandlerExecutor);
     this.storage = Objects.requireNonNull(storage);
-    this.eventFeeder = Objects.requireNonNull(eventFeeder);
-
+    this.eventConsumer = Objects.requireNonNull(eventConsumer);
+    this.eventConsumerExecutor = Objects.requireNonNull(eventConsumerExecutor);
     this.dispatcherThread = new Thread(this::dispatch);
     dispatcherThread.setName(DISPATCHER_THREAD_NAME);
     dispatcherThread.start();
@@ -298,7 +301,7 @@ public class QueuedStateManager implements StateManager {
     }
 
     activeEvents.incrementAndGet();
-    workerPool.execute(() -> {
+    outputHandlerExecutor.execute(() -> {
       try {
         state.outputHandler().transitionInto(state);
         processed.complete(null);
@@ -311,11 +314,11 @@ public class QueuedStateManager implements StateManager {
     });
   }
 
-  private void consumeEvent(SequenceEvent sequenceEvent) throws IOException {
+  private void consumeEvent(SequenceEvent sequenceEvent) {
     try {
-      eventFeeder.enqueue(sequenceEvent);
-    } catch (IsClosed isClosed) {
-      LOG.warn("EventFeeder was closed while processing {}", sequenceEvent);
+      eventConsumerExecutor.execute(() -> eventConsumer.accept(sequenceEvent));
+    } catch (Exception e) {
+      LOG.warn("Error while consuming event {}, {}", sequenceEvent, e);
     }
   }
 
@@ -397,14 +400,14 @@ public class QueuedStateManager implements StateManager {
 
     /**
      * Poll the next {@link Runnable} off the {@link #queue} and invoke it on the
-     * {@link #workerPool}, or do nothing if the queue is empty.
+     * {@link #outputHandlerExecutor}, or do nothing if the queue is empty.
      *
      * <p>The whole operation is guarded with a mutex, so concurrent calls are safe. Only one
      * queued {@link Runnable} will be invoked at any point time, effectively making the queue
      * consumed in a synchronized fashion.
      *
-     * <p>After each invocation has completed, the task on the {@link #workerPool} will call
-     * {@code mutexPoll()} again to ensure immediate consequent consumption of the queue.
+     * <p>After each invocation has completed, the task on the {@link #outputHandlerExecutor} will
+     * call {@code mutexPoll()} again to ensure immediate consequent consumption of the queue.
      */
     void mutexPoll() {
       if (queue.isEmpty()) {
@@ -414,7 +417,7 @@ public class QueuedStateManager implements StateManager {
       if (mutex.tryAcquire()) {
         try {
           // poll and invoke on executor pool
-          workerPool.execute(() -> {
+          outputHandlerExecutor.execute(() -> {
             try {
               final Runnable poll = queue.poll();
               if (poll != null) {

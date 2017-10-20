@@ -67,7 +67,6 @@ import com.spotify.styx.monitoring.Stats;
 import com.spotify.styx.publisher.Publisher;
 import com.spotify.styx.schedule.ScheduleSource;
 import com.spotify.styx.schedule.ScheduleSourceFactory;
-import com.spotify.styx.state.EventFeeder;
 import com.spotify.styx.state.OutputHandler;
 import com.spotify.styx.state.QueuedStateManager;
 import com.spotify.styx.state.RunState;
@@ -296,10 +295,10 @@ public class StyxScheduler implements AppInit {
 
     final ScheduledExecutorService executor = executorFactory.create(3, schedulerTf);
     closer.register(executorCloser("scheduler", executor));
-    final ExecutorService eventWorker = Executors.newFixedThreadPool(16, eventTf);
-    closer.register(executorCloser("event-worker", eventWorker));
-    final ExecutorService eventConsumerWorker = Executors.newSingleThreadExecutor();
-    closer.register(executorCloser("event-consumer-worker", eventConsumerWorker));
+    final ExecutorService outputHandlerExecutor = Executors.newFixedThreadPool(16, eventTf);
+    closer.register(executorCloser("output-handler", outputHandlerExecutor));
+    final ExecutorService eventConsumerExecutor = Executors.newSingleThreadExecutor();
+    closer.register(executorCloser("event-consumer", eventConsumerExecutor));
 
     final Stats stats = statsFactory.apply(environment);
     final WorkflowCache workflowCache = new InMemWorkflowCache();
@@ -307,11 +306,9 @@ public class StyxScheduler implements AppInit {
 
     warmUpCache(workflowCache, storage);
 
-    final EventFeeder<SequenceEvent> eventFeeder =
-        new EventFeeder<>(eventConsumerFactory.apply(environment), eventConsumerWorker);
-
     final QueuedStateManager stateManager = closer.register(
-        new QueuedStateManager(time, eventWorker, storage, eventFeeder));
+        new QueuedStateManager(time, outputHandlerExecutor, storage,
+            eventConsumerFactory.apply(environment), eventConsumerExecutor));
 
     final Config staleStateTtlConfig = config.getConfig(STYX_STALE_STATE_TTL_CONFIG);
     final TimeoutConfig timeoutConfig = TimeoutConfig.createFromConfig(staleStateTtlConfig);
