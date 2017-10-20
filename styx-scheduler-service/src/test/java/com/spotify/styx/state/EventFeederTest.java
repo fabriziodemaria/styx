@@ -38,12 +38,11 @@ import org.junit.Test;
 
 public class EventFeederTest {
   private final static WorkflowInstance wfi = WorkflowInstance.create(
-      WorkflowId.create("comp1", "work1"),
-      "2017-01-01");
+      WorkflowId.create("comp1", "work1"), "2017-01-01");
   private final static SequenceEvent firstEvent = SequenceEvent.create(
-      Event.triggerExecution(wfi, Trigger.natural()),0,0);
+      Event.triggerExecution(wfi, Trigger.natural()), 0, 0);
   private final static SequenceEvent secondEvent = SequenceEvent.create(
-      Event.dequeue(wfi),0,0);
+      Event.dequeue(wfi), 0, 0);
 
   private List<SequenceEvent> trackedEvents = Lists.newArrayList();
   private EventFeeder<SequenceEvent> eventFeeder =
