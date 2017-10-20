@@ -57,7 +57,7 @@ public class EventFeeder<T> implements Closeable {
     try {
       executor.execute(() -> eventConsumer.accept(event));
     } catch (Exception e) {
-      LOG.warn("Exception while consuming event {}: {}", event, e);
+      LOG.warn("Exception while enqueuing event {}: {}", event, e);
     }
   }
 
