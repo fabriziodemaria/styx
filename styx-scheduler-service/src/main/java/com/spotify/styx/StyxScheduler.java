@@ -84,7 +84,6 @@ import com.spotify.styx.util.CachedSupplier;
 import com.spotify.styx.util.Debug;
 import com.spotify.styx.util.DockerImageValidator;
 import com.spotify.styx.util.IsClosed;
-import com.spotify.styx.util.NoopEventConsumer;
 import com.spotify.styx.util.RetryUtil;
 import com.spotify.styx.util.StorageFactory;
 import com.spotify.styx.util.Time;
@@ -178,7 +177,7 @@ public class StyxScheduler implements AppInit {
     private PublisherFactory publisherFactory = (env) -> Publisher.NOOP;
     private RetryUtil retryUtil = DEFAULT_RETRY_UTIL;
     private WorkflowResourceDecorator resourceDecorator = WorkflowResourceDecorator.NOOP;
-    private EventConsumerFactory eventConsumerFactory = (env) -> NoopEventConsumer.NOOP;
+    private EventConsumerFactory eventConsumerFactory = (env) -> (event) -> {};
 
     public Builder setTime(Time time) {
       this.time = time;
