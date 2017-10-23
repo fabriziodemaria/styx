@@ -300,7 +300,11 @@ public class QueuedStateManager implements StateManager {
 
     // If the service is stopped right before this line, the event was successfully stored but never
     // going to be consumed. Event consumption is only best effort with the current implementation.
-    consumeEvent(sequenceEvent);
+    try {
+      eventConsumerExecutor.execute(() -> eventConsumer.accept(sequenceEvent));
+    } catch (Exception e) {
+      LOG.warn("Error while consuming event {}", sequenceEvent, e);
+    }
 
     activeEvents.incrementAndGet();
     outputHandlerExecutor.execute(() -> {
@@ -314,14 +318,6 @@ public class QueuedStateManager implements StateManager {
         activeEvents.decrementAndGet();
       }
     });
-  }
-
-  private void consumeEvent(SequenceEvent sequenceEvent) {
-    try {
-      eventConsumerExecutor.execute(() -> eventConsumer.accept(sequenceEvent));
-    } catch (Exception e) {
-      LOG.warn("Error while consuming event {}", sequenceEvent, e);
-    }
   }
 
   private void storeEvent(SequenceEvent sequenceEvent) throws IOException {
