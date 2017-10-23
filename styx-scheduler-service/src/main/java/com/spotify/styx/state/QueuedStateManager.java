@@ -320,7 +320,7 @@ public class QueuedStateManager implements StateManager {
     try {
       eventConsumerExecutor.execute(() -> eventConsumer.accept(sequenceEvent));
     } catch (Exception e) {
-      LOG.warn("Error while consuming event {}, {}", sequenceEvent, e);
+      LOG.warn("Error while consuming event {}", sequenceEvent, e);
     }
   }
 
