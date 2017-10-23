@@ -35,7 +35,6 @@ import com.github.rholder.retry.RetryerBuilder;
 import com.github.rholder.retry.StopStrategies;
 import com.github.rholder.retry.WaitStrategies;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Throwables;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.spotify.styx.model.Event;
 import com.spotify.styx.model.EventVisitor;
@@ -551,7 +550,7 @@ class KubernetesDockerRunner implements DockerRunner {
         stateManager.receive(event);
       } catch (IsClosedException isClosedException) {
         LOG.warn("Could not receive kubernetes event", isClosedException);
-        throw Throwables.propagate(isClosedException);
+        throw new RuntimeException(isClosedException);
       }
     }
   }
