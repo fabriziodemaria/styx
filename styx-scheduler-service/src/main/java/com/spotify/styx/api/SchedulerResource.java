@@ -169,6 +169,8 @@ public class SchedulerResource {
       }
     } catch (IsClosedException isClosedException) {
       return Response.forStatus(INTERNAL_SERVER_ERROR);
+    } catch (IllegalStateException e) {
+      return Response.forStatus(BAD_REQUEST.withReasonPhrase("Event not allowed: " + e.getMessage()));
     }
 
     return Response.forPayload(event);

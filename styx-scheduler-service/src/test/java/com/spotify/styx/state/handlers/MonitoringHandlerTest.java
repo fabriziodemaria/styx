@@ -27,6 +27,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.spotify.styx.model.Event;
+import com.spotify.styx.model.ExecutionDescription;
 import com.spotify.styx.model.WorkflowId;
 import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.monitoring.MonitoringHandler;
@@ -49,6 +50,7 @@ public class MonitoringHandlerTest {
 
   private static final WorkflowInstance WORKFLOW_INSTANCE =
       WorkflowInstance.create(TestData.WORKFLOW_ID, "2016-04-04T08");
+  private static final Trigger TRIGGER1 = Trigger.unknown("trig1");
 
   private OutputHandler outputHandler;
   private Time time;
@@ -69,10 +71,13 @@ public class MonitoringHandlerTest {
     RunState state = RunState.create(WORKFLOW_INSTANCE, RunState.State.NEW, time, outputHandler);
     stateManager.initialize(state);
 
-    stateManager.receive(Event.timeTrigger(state.workflowInstance()));
+    stateManager.receive(Event.triggerExecution(WORKFLOW_INSTANCE, TRIGGER1));
+    stateManager.receive(Event.dequeue(WORKFLOW_INSTANCE));
+    stateManager.receive(Event.submit(WORKFLOW_INSTANCE, ExecutionDescription.forImage(""), "id"));
+    stateManager.receive(Event.submitted(WORKFLOW_INSTANCE, null));
 
     i = Instant.parse("2015-12-31T23:59:12.000Z");
-    stateManager.receive(Event.started(state.workflowInstance()));
+    stateManager.receive(Event.started(WORKFLOW_INSTANCE));
 
     verify(stats).recordSubmitToRunningTime(Matchers.eq(2L));
   }
@@ -112,13 +117,14 @@ public class MonitoringHandlerTest {
     RunState state = RunState.create(WORKFLOW_INSTANCE, RunState.State.NEW, time, outputHandler);
     stateManager.initialize(state);
 
-    stateManager.receive(Event.timeTrigger(state.workflowInstance()));
-    stateManager.receive(Event.runError(state.workflowInstance(), "error"));
-    stateManager.receive(Event.retryAfter(state.workflowInstance(), 0));
+    stateManager.receive(Event.triggerExecution(WORKFLOW_INSTANCE, TRIGGER1));
+    stateManager.receive(Event.runError(WORKFLOW_INSTANCE, "error"));
+    stateManager.receive(Event.retryAfter(WORKFLOW_INSTANCE, 0));
 
     i = Instant.parse("2015-12-31T23:59:15.000Z");
-    stateManager.receive(Event.dequeue(state.workflowInstance()));
-    stateManager.receive(Event.created(state.workflowInstance(), "test_execution_id", "img"));
+    stateManager.receive(Event.dequeue(WORKFLOW_INSTANCE));
+    stateManager.receive(Event.submit(WORKFLOW_INSTANCE, ExecutionDescription.forImage(""), "id"));
+    stateManager.receive(Event.submitted(WORKFLOW_INSTANCE, "id"));
 
     i = Instant.parse("2015-12-31T23:59:16.000Z");
     stateManager.receive(Event.started(state.workflowInstance()));

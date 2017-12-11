@@ -195,6 +195,21 @@ public class SchedulerResourceTest {
   }
 
   @Test
+  public void shouldFailOnInjectRetryEvent() throws Exception {
+    RunState initialState = RunState.create(
+        WFI, RunState.State.QUEUED, StateData.newBuilder().retryDelayMillis(1000L).build());
+    stateManager.initialize(initialState);
+
+    Event injectedEvent = Event.retry(WFI);
+    ByteString eventPayload = serialize(injectedEvent);
+    CompletionStage<Response<ByteString>> post =
+        serviceHelper.request("POST", SchedulerResource.BASE + "/events", eventPayload);
+
+    final Response<ByteString> response = post.toCompletableFuture().get();
+    assertThat(response, hasStatus(withCode(Status.BAD_REQUEST)));
+  }
+
+  @Test
   public void testCreateWorkflow() throws Exception {
     final Response<ByteString> r = serviceHelper.request(
         "POST", SchedulerResource.BASE + "/workflows/styx",
