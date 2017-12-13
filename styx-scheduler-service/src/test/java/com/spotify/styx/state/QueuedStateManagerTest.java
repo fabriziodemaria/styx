@@ -61,6 +61,9 @@ public class QueuedStateManagerTest {
   private static final WorkflowInstance INSTANCE = WorkflowInstance.create(
       TestData.WORKFLOW_ID, "2016-05-01");
 
+  private final static String TEST_EXECUTION_ID_1 = "execution_1";
+  private final static String DOCKER_IMAGE = "busybox:1.1";
+
   private static final Trigger TRIGGER1 = Trigger.unknown("trig1");
   private static final Trigger TRIGGER2 = Trigger.unknown("trig2");
   private static final Trigger TRIGGER3 = Trigger.unknown("trig3");
@@ -128,8 +131,7 @@ public class QueuedStateManagerTest {
     stateManager.initialize(RunState.fresh(INSTANCE));
     stateManager.receive(Event.triggerExecution(INSTANCE, TRIGGER2));
     stateManager.receive(Event.dequeue(INSTANCE));
-    stateManager.receive(Event.submit(INSTANCE, ExecutionDescription.forImage(""), "id"));
-    stateManager.receive(Event.submitted(INSTANCE, "id"));
+    stateManager.receive(Event.created(INSTANCE, TEST_EXECUTION_ID_1, DOCKER_IMAGE));
     stateManager.receive(Event.started(INSTANCE));
     stateManager.receive(Event.halt(INSTANCE));
     assertTrue(stateManager.awaitIdle(1000));
@@ -141,8 +143,8 @@ public class QueuedStateManagerTest {
     SortedSet<SequenceEvent> storedEvents = storage.readEvents(INSTANCE);
     SequenceEvent lastStoredEvent = storedEvents.last();
     assertThat(lastStoredEvent.event(), is(Event.triggerExecution(INSTANCE, TRIGGER3)));
-    assertThat(storage.getLatestStoredCounter(INSTANCE), hasValue(9L));
-    assertThat(storage.getCounterFromActiveStates(INSTANCE), hasValue(9L));
+    assertThat(storage.getLatestStoredCounter(INSTANCE), hasValue(8L));
+    assertThat(storage.getCounterFromActiveStates(INSTANCE), hasValue(8L));
   }
 
   @Test(expected = RuntimeException.class)
@@ -172,22 +174,22 @@ public class QueuedStateManagerTest {
   public void shouldCloseGracefully() throws Exception {
     setUp();
 
-    stateManager.receive(Event.triggerExecution(INSTANCE, TRIGGER1));
+    stateManager.receive(Event.timeTrigger(INSTANCE));
     stateManager.close();
 
     assertTrue(stateManager.awaitIdle(1000));
     assertThat(transitions, hasSize(1));
-    assertThat(transitions.pop().state(), is(RunState.State.QUEUED));
+    assertThat(transitions.pop().state(), is(RunState.State.SUBMITTED));
   }
 
   @Test
   public void shouldWriteEvents() throws Exception {
     setUp();
 
-    stateManager.receive(Event.triggerExecution(INSTANCE, TRIGGER1));
+    stateManager.receive(Event.timeTrigger(INSTANCE));
     assertTrue(stateManager.awaitIdle(1000));
 
-    stateManager.receive(Event.dequeue(INSTANCE));
+    stateManager.receive(Event.started(INSTANCE));
     assertTrue(stateManager.awaitIdle(1000));
 
     stateManager.receive(Event.timeout(INSTANCE));
@@ -198,9 +200,9 @@ public class QueuedStateManagerTest {
     assertThat(storage.writtenEvents, hasSize(4));
 
     assertThat(storage.writtenEvents.get(0).counter(), is(0L));
-    assertThat(storage.writtenEvents.get(0).event(), is(Event.triggerExecution(INSTANCE, TRIGGER1)));
+    assertThat(storage.writtenEvents.get(0).event(), is(Event.timeTrigger(INSTANCE)));
     assertThat(storage.writtenEvents.get(1).counter(), is(1L));
-    assertThat(storage.writtenEvents.get(1).event(), is(Event.dequeue(INSTANCE)));
+    assertThat(storage.writtenEvents.get(1).event(), is(Event.started(INSTANCE)));
     assertThat(storage.writtenEvents.get(2).counter(), is(2L));
     assertThat(storage.writtenEvents.get(2).event(), is(Event.timeout(INSTANCE)));
     assertThat(storage.writtenEvents.get(3).counter(), is(3L));
@@ -211,10 +213,7 @@ public class QueuedStateManagerTest {
   public void shouldRemoveStateIfTerminal() throws Exception {
     setUp();
 
-    stateManager.receive(Event.triggerExecution(INSTANCE, TRIGGER2));
-    stateManager.receive(Event.dequeue(INSTANCE));
-    stateManager.receive(Event.submit(INSTANCE, ExecutionDescription.forImage(""), "id"));
-    stateManager.receive(Event.submitted(INSTANCE, "id"));
+    stateManager.receive(Event.timeTrigger(INSTANCE));
     stateManager.receive(Event.started(INSTANCE));
     stateManager.receive(Event.terminate(INSTANCE, Optional.of(0)));
     stateManager.receive(Event.success(INSTANCE));
@@ -230,40 +229,25 @@ public class QueuedStateManagerTest {
     assertThat(storage.activeStatesMap.isEmpty(), is(true));
     assertThat(storage.getCounterFromActiveStates(INSTANCE), isEmpty());
 
-    stateManager.receive(Event.triggerExecution(INSTANCE, TRIGGER1))
+    stateManager.receive(Event.timeTrigger(INSTANCE))   // 0
         .toCompletableFuture().get(1, MINUTES);
 
     assertThat(storage.activeStatesMap, hasKey(INSTANCE));
     assertThat(storage.getCounterFromActiveStates(INSTANCE), hasValue(0L));
 
-    stateManager.receive(Event.dequeue(INSTANCE))
+    stateManager.receive(Event.started(INSTANCE))       // 1
         .toCompletableFuture().get(1, MINUTES);
 
     assertThat(storage.getCounterFromActiveStates(INSTANCE), hasValue(1L));
 
-    stateManager.receive(Event.submit(INSTANCE, ExecutionDescription.forImage(""), "id"))
+    stateManager.receive(Event.terminate(INSTANCE, Optional.of(0)))  // 2
         .toCompletableFuture().get(1, MINUTES);
 
     assertThat(storage.getCounterFromActiveStates(INSTANCE), hasValue(2L));
 
-    stateManager.receive(Event.submitted(INSTANCE, "id"))
-        .toCompletableFuture().get(1, MINUTES);
-
-    assertThat(storage.getCounterFromActiveStates(INSTANCE), hasValue(3L));
-
-    stateManager.receive(Event.started(INSTANCE))
-        .toCompletableFuture().get(1, MINUTES);
-
-    assertThat(storage.getCounterFromActiveStates(INSTANCE), hasValue(4L));
-
-    stateManager.receive(Event.terminate(INSTANCE, Optional.of(0)))
-        .toCompletableFuture().get(1, MINUTES);
-
-    assertThat(storage.getCounterFromActiveStates(INSTANCE), hasValue(5L));
-
     assertTrue(stateManager.awaitIdle(1000));
-    assertThat(storage.getLatestStoredCounter(INSTANCE), hasValue(5L));
-    assertThat(storage.getCounterFromActiveStates(INSTANCE), hasValue(5L));
+    assertThat(storage.getLatestStoredCounter(INSTANCE), hasValue(2L));
+    assertThat(storage.getCounterFromActiveStates(INSTANCE), hasValue(2L));
 
     stateManager.receive(Event.success(INSTANCE));
 
@@ -275,10 +259,10 @@ public class QueuedStateManagerTest {
   public void shouldNotStoreEventOnIllegalStateTransition() throws Exception {
     setUp();
 
-    stateManager.receive(Event.triggerExecution(INSTANCE, TRIGGER1));
+    stateManager.receive(Event.timeTrigger(INSTANCE));
     assertTrue(stateManager.awaitIdle(1000));
 
-    stateManager.receive(Event.dequeue(INSTANCE));
+    stateManager.receive(Event.started(INSTANCE));
     assertTrue(stateManager.awaitIdle(1000));
 
     stateManager.receive(Event.started(INSTANCE)); // causes illegal transition
@@ -289,9 +273,9 @@ public class QueuedStateManagerTest {
     assertThat(storage.writtenEvents, hasSize(2));
 
     assertThat(storage.writtenEvents.get(0).counter(), is(0L));
-    assertThat(storage.writtenEvents.get(0).event(), is(Event.triggerExecution(INSTANCE, TRIGGER1)));
+    assertThat(storage.writtenEvents.get(0).event(), is(Event.timeTrigger(INSTANCE)));
     assertThat(storage.writtenEvents.get(1).counter(), is(1L));
-    assertThat(storage.writtenEvents.get(1).event(), is(Event.dequeue(INSTANCE)));
+    assertThat(storage.writtenEvents.get(1).event(), is(Event.started(INSTANCE)));
   }
 
   @Test
@@ -299,7 +283,7 @@ public class QueuedStateManagerTest {
     stateManager = new QueuedStateManager(Instant::now, POOL1, storage, eventConsumer, POOL2);
 
     stateManager.restore(RunState.fresh(INSTANCE), 7L);
-    stateManager.receive(Event.triggerExecution(INSTANCE, TRIGGER1));
+    stateManager.receive(Event.timeTrigger(INSTANCE));  // 8
 
     assertTrue(stateManager.awaitIdle(1000));
     assertThat(storage.activeStatesMap, hasKey(INSTANCE));

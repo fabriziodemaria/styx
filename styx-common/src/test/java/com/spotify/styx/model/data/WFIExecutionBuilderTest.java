@@ -442,7 +442,7 @@ public class WFIExecutionBuilderTest {
         runState = RunState.fresh(WORKFLOW_INSTANCE, (Time) Instant::now);
       }
 
-      runState = runState.backwardsCompatibleTransition(event.event());
+      runState = runState.transition(event.event());
     }
   }
 

@@ -40,7 +40,7 @@ public class StateTransitioner {
     WorkflowInstance key = event.workflowInstance();
     RunState currentState = states.get(key);
 
-    RunState nextState = currentState.backwardsCompatibleTransition(event);
+    RunState nextState = currentState.transition(event);
     states.put(key, nextState);
 
     nextState.outputHandler().transitionInto(nextState);
