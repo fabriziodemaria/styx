@@ -52,6 +52,11 @@ public class SyncStateManager implements StateManager {
   @Override
   public CompletionStage<Void> receive(Event event) {
     WorkflowInstance key = event.workflowInstance();
+
+    if (!states.containsKey(key)) {
+      throw new IllegalStateException();
+    }
+
     RunState currentState = states.get(key);
 
     RunState nextState = currentState.transition(event);
