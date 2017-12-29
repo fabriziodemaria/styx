@@ -35,6 +35,7 @@ import com.spotify.apollo.route.AsyncHandler;
 import com.spotify.apollo.route.Middleware;
 import com.spotify.apollo.route.Route;
 import com.spotify.styx.TriggerListener;
+import com.spotify.styx.WorkflowCache;
 import com.spotify.styx.model.Event;
 import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowConfiguration;
@@ -43,14 +44,12 @@ import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.serialization.Json;
 import com.spotify.styx.state.StateManager;
 import com.spotify.styx.state.Trigger;
-import com.spotify.styx.storage.Storage;
 import com.spotify.styx.util.DockerImageValidator;
 import com.spotify.styx.util.EventUtil;
 import com.spotify.styx.util.IsClosedException;
 import com.spotify.styx.util.RandomGenerator;
 import com.spotify.styx.util.Time;
 import com.spotify.styx.workflow.WorkflowInitializationException;
-import java.io.IOException;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Objects;
@@ -69,7 +68,7 @@ public class SchedulerResource {
   private final TriggerListener triggerListener;
   private final Consumer<Workflow> workflowChangeListener;
   private final Consumer<Workflow> workflowRemoveListener;
-  private final Storage storage;
+  private final WorkflowCache workflowCache;
   private final Time time;
   private final DockerImageValidator dockerImageValidator;
 
@@ -80,14 +79,14 @@ public class SchedulerResource {
       TriggerListener triggerListener,
       Consumer<Workflow> workflowChangeListener,
       Consumer<Workflow> workflowRemoveListener,
-      Storage storage,
+      WorkflowCache workflowCache,
       Time time,
       DockerImageValidator dockerImageValidator) {
     this.stateManager = Objects.requireNonNull(stateManager);
     this.triggerListener = Objects.requireNonNull(triggerListener);
     this.workflowChangeListener = workflowChangeListener;
     this.workflowRemoveListener = workflowRemoveListener;
-    this.storage = Objects.requireNonNull(storage);
+    this.workflowCache = Objects.requireNonNull(workflowCache);
     this.time = Objects.requireNonNull(time);
     this.dockerImageValidator = Objects.requireNonNull(dockerImageValidator, "dockerImageValidator");
   }
@@ -128,12 +127,7 @@ public class SchedulerResource {
 
   private Response<ByteString> deleteWorkflow(String cid, String wfid) {
     final Optional<Workflow> workflowOpt;
-    try {
-      workflowOpt = storage.workflow(WorkflowId.create(cid, wfid));
-    } catch (IOException e) {
-      return Response
-          .forStatus(Status.INTERNAL_SERVER_ERROR.withReasonPhrase("Error in internal storage"));
-    }
+    workflowOpt = workflowCache.workflow(WorkflowId.create(cid, wfid));
     if (!workflowOpt.isPresent()) {
       return Response.forStatus(Status.NOT_FOUND.withReasonPhrase("Workflow does not exist"));
     }
@@ -221,18 +215,12 @@ public class SchedulerResource {
     final Instant instant;
 
     // Verifying workflow
-    try {
-      final Optional<Workflow> workflowResult = storage.workflow(workflowInstance.workflowId());
-      if (workflowResult.isPresent()) {
-        workflow = workflowResult.get();
-      } else {
-        return Response.forStatus(
-            BAD_REQUEST.withReasonPhrase("The specified workflow is not found in the scheduler"));
-      }
-    } catch (IOException e) {
+    final Optional<Workflow> workflowResult = workflowCache.workflow(workflowInstance.workflowId());
+    if (workflowResult.isPresent()) {
+      workflow = workflowResult.get();
+    } else {
       return Response.forStatus(
-          INTERNAL_SERVER_ERROR.withReasonPhrase(
-              "An error occurred while retrieving workflow specifications"));
+          BAD_REQUEST.withReasonPhrase("The specified workflow is not found in the scheduler"));
     }
 
     // Verifying instant

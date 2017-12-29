@@ -45,24 +45,22 @@ import com.google.common.collect.ImmutableList;
 import com.spotify.apollo.Response;
 import com.spotify.apollo.Status;
 import com.spotify.apollo.test.ServiceHelper;
+import com.spotify.styx.InMemWorkflowCache;
+import com.spotify.styx.WorkflowCache;
 import com.spotify.styx.model.Event;
 import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowConfiguration;
 import com.spotify.styx.model.WorkflowConfigurationBuilder;
-import com.spotify.styx.model.WorkflowId;
 import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.state.RunState;
 import com.spotify.styx.state.StateData;
 import com.spotify.styx.state.StateManager;
 import com.spotify.styx.state.SyncStateManager;
 import com.spotify.styx.state.Trigger;
-import com.spotify.styx.storage.InMemStorage;
-import com.spotify.styx.storage.Storage;
 import com.spotify.styx.testdata.TestData;
 import com.spotify.styx.util.DockerImageValidator;
 import com.spotify.styx.util.TriggerUtil;
 import com.spotify.styx.workflow.WorkflowInitializationException;
-import java.io.IOException;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Optional;
@@ -79,24 +77,24 @@ import org.mockito.Mockito;
  */
 public class SchedulerResourceTest {
 
-  private final InMemStorage storage = new InMemStorage();
+  private final WorkflowCache workflowCache = new InMemWorkflowCache();
   private final StateManager stateManager = Mockito.spy(new SyncStateManager());
 
   private static final WorkflowInstance WFI = WorkflowInstance
       .create(TestData.WORKFLOW_ID, "12345");
 
   private final Workflow HOURLY_WORKFLOW = Workflow.create("styx",
-                                                           TestData.HOURLY_WORKFLOW_CONFIGURATION);
+      TestData.HOURLY_WORKFLOW_CONFIGURATION);
   private final Workflow HOURLY_WORKFLOW_WITH_INVALID_OFFSET =
       Workflow.create("styx", TestData.HOURLY_WORKFLOW_CONFIGURATION_WITH_INVALID_OFFSET);
   private final Workflow DAILY_WORKFLOW = Workflow.create("styx",
-                                                          TestData.DAILY_WORKFLOW_CONFIGURATION);
+      TestData.DAILY_WORKFLOW_CONFIGURATION);
   private final Workflow FULL_DAILY_WORKFLOW = Workflow.create("styx",
-                                                               FULL_WORKFLOW_CONFIGURATION);
+      FULL_WORKFLOW_CONFIGURATION);
   private final Workflow WEEKLY_WORKFLOW = Workflow.create("styx",
-                                                           TestData.WEEKLY_WORKFLOW_CONFIGURATION);
+      TestData.WEEKLY_WORKFLOW_CONFIGURATION);
   private final Workflow MONTHLY_WORKFLOW = Workflow.create("styx",
-                                                            TestData.MONTHLY_WORKFLOW_CONFIGURATION);
+      TestData.MONTHLY_WORKFLOW_CONFIGURATION);
   private Optional<Workflow> triggeredWorkflow = Optional.empty();
   private Optional<Trigger> trigger = Optional.empty();
   private Optional<Instant> triggeredInstant = Optional.empty();
@@ -107,18 +105,11 @@ public class SchedulerResourceTest {
     if (workflow.equals(HOURLY_WORKFLOW_WITH_INVALID_OFFSET)) {
       throw new WorkflowInitializationException(new RuntimeException());
     }
-
-    try {
-      storage.storeWorkflow(workflow);
-    } catch (IOException e) {
-    }
+    workflowCache.store(workflow);
   }
 
   private void workflowRemoveListener(Workflow workflow) {
-    try {
-      storage.delete(workflow.id());
-    } catch (IOException e) {
-    }
+    workflowCache.remove(workflow);
   }
 
   @Before
@@ -127,9 +118,9 @@ public class SchedulerResourceTest {
   }
 
   @Rule
-  public ServiceHelper serviceHelper = getServiceHelper(stateManager, storage);
+  public ServiceHelper serviceHelper = getServiceHelper(stateManager, workflowCache);
 
-  private ServiceHelper getServiceHelper(StateManager stateManager, Storage storage) {
+  private ServiceHelper getServiceHelper(StateManager stateManager, WorkflowCache workflowCache) {
     return ServiceHelper.create((environment) -> {
       final SchedulerResource schedulerResource = new SchedulerResource(
           stateManager,
@@ -139,7 +130,7 @@ public class SchedulerResourceTest {
             this.triggeredInstant = Optional.of(instant);
             return CompletableFuture.completedFuture(null);
           },
-          this::workflowChangeListener, this::workflowRemoveListener, storage,
+          this::workflowChangeListener, this::workflowRemoveListener, workflowCache,
           () -> Instant.parse("2015-12-31T23:59:10.000Z"),
           dockerImageValidator);
 
@@ -308,7 +299,7 @@ public class SchedulerResourceTest {
     when(failingStateManager.receive(any())).thenReturn(
         exceptionallyCompletedFuture(new RuntimeException("test")));
 
-    ServiceHelper serviceHelper = getServiceHelper(failingStateManager, storage);
+    ServiceHelper serviceHelper = getServiceHelper(failingStateManager, workflowCache);
     serviceHelper.start();
 
     ByteString eventPayload = serialize(WFI);
@@ -325,7 +316,7 @@ public class SchedulerResourceTest {
     StateManager failingStateManager = mock(SyncStateManager.class);
     when(failingStateManager.receive(any())).thenThrow(new RuntimeException("test"));
 
-    ServiceHelper serviceHelper = getServiceHelper(failingStateManager, storage);
+    ServiceHelper serviceHelper = getServiceHelper(failingStateManager, workflowCache);
     serviceHelper.start();
 
     ByteString eventPayload = serialize(WFI);
@@ -353,9 +344,9 @@ public class SchedulerResourceTest {
         "POST", SchedulerResource.BASE + "/workflows/styx",
         serialize(FULL_DAILY_WORKFLOW.configuration())).toCompletableFuture().get();
     assertThat(r, hasStatus(withCode(Status.OK)));
-    assertThat(storage.workflow(FULL_DAILY_WORKFLOW.id()), isPresent());
+    assertThat(workflowCache.workflow(FULL_DAILY_WORKFLOW.id()), isPresent());
     verify(dockerImageValidator).validateImageReference(FULL_DAILY_WORKFLOW.configuration().dockerImage().get());
-    storage.delete(FULL_DAILY_WORKFLOW.id());
+    workflowCache.remove(FULL_DAILY_WORKFLOW);
   }
 
   @Test
@@ -367,7 +358,7 @@ public class SchedulerResourceTest {
         "POST", SchedulerResource.BASE + "/workflows/styx",
         serialize(workflowConfiguration)).toCompletableFuture().get();
     assertThat(r, hasStatus(withCode(Status.BAD_REQUEST)));
-    assertThat(storage.workflow(FULL_DAILY_WORKFLOW.id()), isEmpty());
+    assertThat(workflowCache.workflow(FULL_DAILY_WORKFLOW.id()), isEmpty());
   }
 
   @Test
@@ -387,14 +378,14 @@ public class SchedulerResourceTest {
         serviceHelper.request("POST", SchedulerResource.BASE + "/workflows/styx", workflowPayload);
 
     assertThat(post.toCompletableFuture().get(), hasStatus(withCode(Status.OK)));
-    assertThat(storage.workflow(HOURLY_WORKFLOW.id()), isPresent());
+    assertThat(workflowCache.workflow(HOURLY_WORKFLOW.id()), isPresent());
 
     CompletionStage<Response<ByteString>> post2 =
         serviceHelper.request("POST", SchedulerResource.BASE + "/workflows/styx", workflowPayload);
 
     assertThat(post2.toCompletableFuture().get(), hasStatus(withCode(Status.OK)));
-    assertThat(storage.workflow(HOURLY_WORKFLOW.id()), isPresent());
-    storage.delete(HOURLY_WORKFLOW.id());
+    assertThat(workflowCache.workflow(HOURLY_WORKFLOW.id()), isPresent());
+    workflowCache.remove(HOURLY_WORKFLOW);
   }
 
   @Test
@@ -404,17 +395,17 @@ public class SchedulerResourceTest {
         serviceHelper.request("POST", SchedulerResource.BASE + "/workflows/styx", workflowPayload);
 
     assertThat(post.toCompletableFuture().get(), hasStatus(withCode(Status.OK)));
-    assertThat(storage.workflow(HOURLY_WORKFLOW.id()), isPresent());
+    assertThat(workflowCache.workflow(HOURLY_WORKFLOW.id()), isPresent());
 
     ByteString workflowWithInvalidOffset =
         serialize(HOURLY_WORKFLOW_WITH_INVALID_OFFSET.configuration());
     CompletionStage<Response<ByteString>> post2 =
         serviceHelper.request("POST", SchedulerResource.BASE + "/workflows/styx",
-                              workflowWithInvalidOffset);
+            workflowWithInvalidOffset);
 
     assertThat(post2.toCompletableFuture().get(), hasStatus(withCode(Status.BAD_REQUEST)));
-    assertThat(storage.workflow(HOURLY_WORKFLOW.id()), isPresent());
-    storage.delete(HOURLY_WORKFLOW.id());
+    assertThat(workflowCache.workflow(HOURLY_WORKFLOW.id()), isPresent());
+    workflowCache.remove(HOURLY_WORKFLOW);
   }
 
   @Test
@@ -432,21 +423,21 @@ public class SchedulerResourceTest {
 
   @Test
   public void testDeleteWorkflowWhenPresent() throws Exception {
-    storage.storeWorkflow(HOURLY_WORKFLOW);
+    workflowCache.store(HOURLY_WORKFLOW);
     Response<ByteString> response = serviceHelper.request("DELETE", String
         .join("/", SchedulerResource.BASE, "workflows", HOURLY_WORKFLOW.componentId(),
-              HOURLY_WORKFLOW.workflowId())).toCompletableFuture().get();
+            HOURLY_WORKFLOW.workflowId())).toCompletableFuture().get();
     assertThat(response, hasStatus(withCode(Status.NO_CONTENT)));
-    assertThat(storage.workflow(HOURLY_WORKFLOW.id()), isEmpty());
+    assertThat(workflowCache.workflow(HOURLY_WORKFLOW.id()), isEmpty());
   }
 
   @Test
   public void testDeleteWorkflowWhenNotPresent() throws Exception {
     Response<ByteString> response = serviceHelper.request("DELETE", String
         .join("/", SchedulerResource.BASE, "workflows", HOURLY_WORKFLOW.componentId(),
-              HOURLY_WORKFLOW.workflowId())).toCompletableFuture().get();
+            HOURLY_WORKFLOW.workflowId())).toCompletableFuture().get();
     assertThat(response, hasStatus(withCode(Status.NOT_FOUND)));
-    assertThat(storage.workflow(HOURLY_WORKFLOW.id()), isEmpty());
+    assertThat(workflowCache.workflow(HOURLY_WORKFLOW.id()), isEmpty());
   }
 
   @Test
@@ -462,7 +453,7 @@ public class SchedulerResourceTest {
 
   @Test
   public void testTriggeredWorkflowGeneratesTrigger() throws Exception {
-    storage.storeWorkflow(HOURLY_WORKFLOW);
+    workflowCache.store(HOURLY_WORKFLOW);
     WorkflowInstance toTrigger = WorkflowInstance.create(HOURLY_WORKFLOW.id(), "2014-12-31T23");
 
     Response<ByteString> response = requestAndWaitTriggerWorkflowInstance(toTrigger);
@@ -475,7 +466,7 @@ public class SchedulerResourceTest {
 
   @Test
   public void testTriggerWorkflowInstanceHourly() throws Exception {
-    storage.storeWorkflow(HOURLY_WORKFLOW);
+    workflowCache.store(HOURLY_WORKFLOW);
     WorkflowInstance toTrigger = WorkflowInstance.create(HOURLY_WORKFLOW.id(), "2014-12-31T23");
 
     Response<ByteString> response = requestAndWaitTriggerWorkflowInstance(toTrigger);
@@ -487,7 +478,7 @@ public class SchedulerResourceTest {
 
   @Test
   public void testTriggerWorkflowInstanceDaily() throws Exception {
-    storage.storeWorkflow(DAILY_WORKFLOW);
+    workflowCache.store(DAILY_WORKFLOW);
     WorkflowInstance toTrigger = WorkflowInstance.create(DAILY_WORKFLOW.id(), "2014-12-31");
 
     Response<ByteString> response = requestAndWaitTriggerWorkflowInstance(toTrigger);
@@ -499,7 +490,7 @@ public class SchedulerResourceTest {
 
   @Test
   public void testTriggerWorkflowInstanceWeekly() throws Exception {
-    storage.storeWorkflow(WEEKLY_WORKFLOW);
+    workflowCache.store(WEEKLY_WORKFLOW);
     WorkflowInstance toTrigger = WorkflowInstance.create(WEEKLY_WORKFLOW.id(), "2016-01-03");
 
     Response<ByteString> response = requestAndWaitTriggerWorkflowInstance(toTrigger);
@@ -510,43 +501,21 @@ public class SchedulerResourceTest {
   }
 
   @Test
-  public void testTriggerWorkflowInstanceMissingStorage() throws Exception {
+  public void testTriggerWorkflowInstanceMissingworkflowCache() throws Exception {
     WorkflowInstance toTrigger = WorkflowInstance.create(HOURLY_WORKFLOW.id(), "2016-12-31T23");
 
     Response<ByteString> response = requestAndWaitTriggerWorkflowInstance(toTrigger);
 
     assertThat(response.status(),
-               is(Status.BAD_REQUEST.withReasonPhrase("The specified workflow is not"
-                                                      + " found in the scheduler")));
-    assertThat(triggeredWorkflow, isEmpty());
-    assertThat(triggeredInstant, isEmpty());
-  }
-
-  @Test
-  public void testTriggerWorkflowInstanceFailingStorage() throws Exception {
-    Storage failingStorage = mock(Storage.class);
-    when(failingStorage.workflow(any(WorkflowId.class))).thenThrow(new IOException("Error"));
-
-    ServiceHelper serviceHelper = getServiceHelper(stateManager, failingStorage);
-    serviceHelper.start();
-
-    WorkflowInstance toTrigger = WorkflowInstance.create(HOURLY_WORKFLOW.id(), "2016-12-31T23");
-    ByteString eventPayload = ByteString.of(OBJECT_MAPPER.writeValueAsBytes(toTrigger));
-    CompletionStage<Response<ByteString>> post =
-        serviceHelper.request("POST", SchedulerResource.BASE + "/trigger", eventPayload);
-    Response<ByteString> response = post.toCompletableFuture().get();
-
-    assertThat(response.status(),
-               is(Status.INTERNAL_SERVER_ERROR
-                      .withReasonPhrase("An error occurred while retrieving "
-                                        + "workflow specifications")));
+        is(Status.BAD_REQUEST.withReasonPhrase("The specified workflow is not"
+                                               + " found in the scheduler")));
     assertThat(triggeredWorkflow, isEmpty());
     assertThat(triggeredInstant, isEmpty());
   }
 
   @Test
   public void testTriggerWorkflowInstanceUnsupportedSchedule() throws Exception {
-    storage.storeWorkflow(MONTHLY_WORKFLOW);
+    workflowCache.store(MONTHLY_WORKFLOW);
     WorkflowInstance toTrigger = WorkflowInstance.create(MONTHLY_WORKFLOW.id(), "2014-12-01");
 
     Response<ByteString> response = requestAndWaitTriggerWorkflowInstance(toTrigger);
@@ -558,20 +527,20 @@ public class SchedulerResourceTest {
 
   @Test
   public void testTriggerWorkflowInstanceFuture() throws Exception {
-    storage.storeWorkflow(HOURLY_WORKFLOW);
+    workflowCache.store(HOURLY_WORKFLOW);
     WorkflowInstance toTrigger = WorkflowInstance.create(HOURLY_WORKFLOW.id(), "2016-12-31T23");
 
     Response<ByteString> response = requestAndWaitTriggerWorkflowInstance(toTrigger);
 
     assertThat(response.status(),
-               is(Status.BAD_REQUEST.withReasonPhrase("Cannot trigger an instance of the future")));
+        is(Status.BAD_REQUEST.withReasonPhrase("Cannot trigger an instance of the future")));
     assertThat(triggeredWorkflow, isEmpty());
     assertThat(triggeredInstant, isEmpty());
   }
 
   @Test
   public void testTriggerWorkflowInstanceParseDayForHourly() throws Exception {
-    storage.storeWorkflow(HOURLY_WORKFLOW);
+    workflowCache.store(HOURLY_WORKFLOW);
     WorkflowInstance toTrigger = WorkflowInstance.create(HOURLY_WORKFLOW.id(), "2015-12-31");
 
     Response<ByteString> response = requestAndWaitTriggerWorkflowInstance(toTrigger);
@@ -583,29 +552,29 @@ public class SchedulerResourceTest {
 
   @Test
   public void testTriggerWorkflowInstanceParseFailure() throws Exception {
-    storage.storeWorkflow(HOURLY_WORKFLOW);
+    workflowCache.store(HOURLY_WORKFLOW);
     WorkflowInstance toTrigger = WorkflowInstance.create(DAILY_WORKFLOW.id(), "2015");
 
     Response<ByteString> response = requestAndWaitTriggerWorkflowInstance(toTrigger);
 
     assertThat(response.status(),
-               is(Status.BAD_REQUEST.withReasonPhrase("Cannot parse time parameter 2015 - "
-                                                      + "Text '2015' could not be parsed at index 4")));
+        is(Status.BAD_REQUEST.withReasonPhrase("Cannot parse time parameter 2015 - "
+                                               + "Text '2015' could not be parsed at index 4")));
     assertThat(triggeredWorkflow, isEmpty());
     assertThat(triggeredInstant, isEmpty());
   }
 
   @Test
   public void testTriggerAlreadyActiveWorkflowInstance() throws Exception {
-    storage.storeWorkflow(DAILY_WORKFLOW);
+    workflowCache.store(DAILY_WORKFLOW);
     WorkflowInstance toTrigger = WorkflowInstance.create(DAILY_WORKFLOW.id(), "2015-12-31");
     stateManager.initialize(RunState.fresh(toTrigger));
 
     Response<ByteString> response = requestAndWaitTriggerWorkflowInstance(toTrigger);
 
     assertThat(response.status(),
-               is(Status.BAD_REQUEST.withReasonPhrase("The specified instance is already "
-                                                      + "active in the scheduler")));
+        is(Status.BAD_REQUEST.withReasonPhrase("The specified instance is already "
+                                               + "active in the scheduler")));
     assertThat(triggeredWorkflow, isEmpty());
     assertThat(triggeredInstant, isEmpty());
   }

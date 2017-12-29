@@ -335,7 +335,7 @@ public class StyxScheduler implements AppInit {
         new TerminationHandler(retryUtil, stateManager),
         new MonitoringHandler(time, stats),
         new PublisherHandler(publisher),
-        new ExecutionDescriptionHandler(storage, stateManager, new DockerImageValidator())
+        new ExecutionDescriptionHandler(workflowCache, stateManager, new DockerImageValidator())
     };
     final StateFactory stateFactory =
         (workflowInstance) -> RunState.fresh(workflowInstance, time, outputHandlers);
@@ -369,7 +369,7 @@ public class StyxScheduler implements AppInit {
 
     final SchedulerResource schedulerResource =
         new SchedulerResource(stateManager, trigger, workflowChangeListener, workflowRemoveListener,
-                              storage, time, new DockerImageValidator());
+                              workflowCache, time, new DockerImageValidator());
 
     environment.routingEngine()
         .registerAutoRoute(Route.sync("GET", "/ping", rc -> "pong"))

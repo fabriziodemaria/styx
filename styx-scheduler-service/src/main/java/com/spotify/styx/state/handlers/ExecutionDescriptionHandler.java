@@ -23,6 +23,7 @@ package com.spotify.styx.state.handlers;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
+import com.spotify.styx.WorkflowCache;
 import com.spotify.styx.model.Event;
 import com.spotify.styx.model.ExecutionDescription;
 import com.spotify.styx.model.Workflow;
@@ -31,7 +32,6 @@ import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.state.OutputHandler;
 import com.spotify.styx.state.RunState;
 import com.spotify.styx.state.StateManager;
-import com.spotify.styx.storage.Storage;
 import com.spotify.styx.util.DockerImageValidator;
 import com.spotify.styx.util.IsClosedException;
 import com.spotify.styx.util.MissingRequiredPropertyException;
@@ -50,15 +50,15 @@ public class ExecutionDescriptionHandler implements OutputHandler {
 
   private static final String STYX_RUN = "styx-run";
 
-  private final Storage storage;
+  private final WorkflowCache workflowCache;
   private final StateManager stateManager;
   private final DockerImageValidator dockerImageValidator;
 
   public ExecutionDescriptionHandler(
-      Storage storage,
+      WorkflowCache workflowCache,
       StateManager stateManager,
       DockerImageValidator dockerImageValidator) {
-    this.storage = requireNonNull(storage);
+    this.workflowCache = requireNonNull(workflowCache);
     this.stateManager = requireNonNull(stateManager);
     this.dockerImageValidator = requireNonNull(dockerImageValidator);
   }
@@ -104,7 +104,7 @@ public class ExecutionDescriptionHandler implements OutputHandler {
       throws IOException, MissingRequiredPropertyException {
     final WorkflowId workflowId = workflowInstance.workflowId();
 
-    final Workflow workflow = storage.workflow(workflowId).orElseThrow(
+    final Workflow workflow = workflowCache.workflow(workflowId).orElseThrow(
         () -> new ResourceNotFoundException(format("Missing %s, halting %s",
                                                    workflowId, workflowInstance)));
 

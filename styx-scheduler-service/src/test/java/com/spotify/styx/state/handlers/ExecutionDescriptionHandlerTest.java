@@ -40,6 +40,8 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableList;
+import com.spotify.styx.InMemWorkflowCache;
+import com.spotify.styx.WorkflowCache;
 import com.spotify.styx.model.Event;
 import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowConfiguration;
@@ -56,7 +58,6 @@ import com.spotify.styx.storage.InMemStorage;
 import com.spotify.styx.storage.Storage;
 import com.spotify.styx.util.DockerImageValidator;
 import com.spotify.styx.util.IsClosedException;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Optional;
@@ -75,6 +76,7 @@ public class ExecutionDescriptionHandlerTest {
   private static final Trigger TRIGGER = Trigger.unknown("trig");
 
   private Storage storage;
+  private WorkflowCache workflowCache;
   private StateManager stateManager;
   private ExecutionDescriptionHandler toTest;
 
@@ -83,9 +85,10 @@ public class ExecutionDescriptionHandlerTest {
   @Before
   public void setUp() throws Exception {
     when(dockerImageValidator.validateImageReference(anyString())).thenReturn(Collections.emptyList());
-    storage = spy(new InMemStorage());
+    workflowCache = spy(new InMemWorkflowCache());
     stateManager = spy(new SyncStateManager());
-    toTest = new ExecutionDescriptionHandler(storage, stateManager, dockerImageValidator);
+    storage = spy(new InMemStorage());
+    toTest = new ExecutionDescriptionHandler(workflowCache, stateManager, dockerImageValidator);
   }
 
   @Test
@@ -96,6 +99,7 @@ public class ExecutionDescriptionHandlerTest {
     RunState runState = RunState.fresh(workflowInstance, toTest);
 
     storage.storeWorkflow(workflow);
+    workflowCache.store(workflow);
     storage.patchState(workflow.id(), workflowState);
     stateManager.initialize(runState);
     stateManager.receive(Event.triggerExecution(workflowInstance, TRIGGER));
@@ -121,6 +125,7 @@ public class ExecutionDescriptionHandlerTest {
     RunState runState = RunState.fresh(workflowInstance, toTest);
 
     storage.storeWorkflow(workflow);
+    workflowCache.store(workflow);
     storage.patchState(workflow.id(), workflowState);
     stateManager.initialize(runState);
     stateManager.receive(Event.triggerExecution(workflowInstance, TRIGGER));
@@ -136,27 +141,6 @@ public class ExecutionDescriptionHandlerTest {
     assertThat(data.executionDescription().get().dockerImage(), is(DOCKER_IMAGE));
     assertThat(data.executionDescription().get().dockerArgs(), contains("--date", "{}", "--bar"));
     assertThat(data.executionDescription().get().commitSha(), hasValue(COMMIT_SHA));
-  }
-
-  @Test
-  public void shouldTransitionIntoFailedIfStorageError() throws Exception {
-    Workflow workflow = Workflow.create("id", schedule("--date", "{}", "--bar"));
-    WorkflowState workflowState = WorkflowState.patchEnabled(true);
-    WorkflowInstance workflowInstance = WorkflowInstance.create(workflow.id(), "2016-03-14");
-
-    when(storage.workflow(workflow.id()))
-        .thenThrow(new IOException("TEST"));
-
-    storage.storeWorkflow(workflow);
-    storage.patchState(workflow.id(), workflowState);
-
-    RunState runState = RunState.fresh(workflowInstance, toTest);
-    stateManager.initialize(runState);
-    stateManager.receive(Event.triggerExecution(workflowInstance, TRIGGER));
-    stateManager.receive(Event.dequeue(workflowInstance));
-
-    RunState failed = stateManager.get(workflowInstance);
-    assertThat(failed.state(), Matchers.is(RunState.State.FAILED));
   }
 
   @Test
@@ -182,6 +166,7 @@ public class ExecutionDescriptionHandlerTest {
     RunState runState = RunState.create(workflowInstance, RunState.State.PREPARE);
 
     storage.storeWorkflow(workflow);
+    workflowCache.store(workflow);
     stateManager.initialize(runState);
     toTest.transitionInto(runState);
 
@@ -198,6 +183,7 @@ public class ExecutionDescriptionHandlerTest {
     RunState runState = RunState.create(workflowInstance, RunState.State.PREPARE);
 
     storage.storeWorkflow(workflow);
+    workflowCache.store(workflow);
     stateManager.initialize(runState);
     toTest.transitionInto(runState);
 
@@ -218,6 +204,7 @@ public class ExecutionDescriptionHandlerTest {
         .when(stateManager).receive(any(Event.class));
 
     storage.storeWorkflow(workflow);
+    workflowCache.store(workflow);
     storage.patchState(workflow.id(), workflowState);
     stateManager.initialize(runState);
     stateManager.receive(Event.triggerExecution(workflowInstance, TRIGGER));
