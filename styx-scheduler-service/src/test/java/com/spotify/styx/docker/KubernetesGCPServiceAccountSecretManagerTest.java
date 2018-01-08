@@ -410,8 +410,16 @@ public class KubernetesGCPServiceAccountSecretManagerTest {
     when(secretList.getItems()).thenReturn(ImmutableList.of(secret1, secret2, secret3));
 
     when(secrets.delete(secret1)).thenThrow(new KubernetesClientException("fail delete secret1"));
-    doThrow(new IOException("fail delete json-key-2")).when(serviceAccountKeyManager).deleteKey("json-key-2");
-    doThrow(new IOException("fail delete p12-key-2")).when(serviceAccountKeyManager).deleteKey("p12-key-2");
+    doThrow(new IOException("fail delete json-key-2")).when(serviceAccountKeyManager)
+        .deleteKey(keyName(SERVICE_ACCOUNT, "json-key-2"));
+    doThrow(new IOException("fail delete p12-key-2")).when(serviceAccountKeyManager)
+        .deleteKey(keyName(SERVICE_ACCOUNT, "p12-key-2"));
+
+    final GoogleJsonResponseException NotFoundException = new GoogleJsonResponseException(
+        new HttpResponseException.Builder(404, "Not Found", new HttpHeaders()),
+        new GoogleJsonError());
+    doThrow(NotFoundException).when(serviceAccountKeyManager).deleteKey(keyName(SERVICE_ACCOUNT, "json-key-3"));
+    doThrow(NotFoundException).when(serviceAccountKeyManager).deleteKey(keyName(SERVICE_ACCOUNT, "p12-key-3"));
 
     sut.cleanup();
 
