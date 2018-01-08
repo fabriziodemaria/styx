@@ -25,8 +25,12 @@ import com.google.api.services.iam.v1.Iam;
 import com.google.api.services.iam.v1.model.CreateServiceAccountKeyRequest;
 import com.google.api.services.iam.v1.model.ServiceAccountKey;
 import java.io.IOException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ServiceAccountKeyManager {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ServiceAccountKeyManager.class);
 
   private final Iam iam;
 
@@ -88,6 +92,7 @@ public class ServiceAccountKeyManager {
     } catch (GoogleJsonResponseException e) {
       // TODO: handle 403 correctly once google fixes their API
       if (e.getStatusCode() == 403 || e.getStatusCode() == 404) {
+        LOG.debug("Couldn't find key to delete {}", keyName);
         return;
       }
       throw e;

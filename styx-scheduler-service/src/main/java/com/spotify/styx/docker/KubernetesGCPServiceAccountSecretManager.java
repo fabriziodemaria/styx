@@ -300,8 +300,6 @@ class KubernetesGCPServiceAccountSecretManager {
       if (GcpUtil.isPermissionDenied(e)) {
         LOG.warn("[AUDIT] Permission denied when trying to delete unused service account key {}",
             keyName);
-      } else if (GcpUtil.isNotFound(e)) {
-        LOG.debug("Couldn't find key to delete {}", keyName);
       } else {
         LOG.warn("[AUDIT] Failed to delete key {}", keyName);
       }
