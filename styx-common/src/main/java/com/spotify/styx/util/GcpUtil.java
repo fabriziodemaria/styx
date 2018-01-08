@@ -55,14 +55,4 @@ public class GcpUtil {
   public static boolean isResourceExhausted(GoogleJsonError error) {
     return "RESOURCE_EXHAUSTED".equals(error.get("status"));
   }
-
-  public static boolean isNotFound(GoogleJsonResponseException e) {
-    return e.getStatusCode() == 404 && Optional.ofNullable(e.getDetails())
-        .map(GcpUtil::isNotFound)
-        .orElse(false);
-  }
-
-  public static boolean isNotFound(GoogleJsonError error) {
-    return "NOT_FOUND".equals(error.get("status"));
-  }
 }
