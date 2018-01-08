@@ -22,7 +22,6 @@ package com.spotify.styx.docker;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.services.iam.v1.model.ServiceAccountKey;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.Cache;
@@ -149,8 +148,8 @@ class KubernetesGCPServiceAccountSecretManager {
       LOG.info("[AUDIT] Service account keys have been deleted for {}, recreating", serviceAccount);
 
       // Delete secret and any lingering key before creating new keys
-      tryDeleteServiceAccountKey(jsonKeyName);
-      tryDeleteServiceAccountKey(p12KeyName);
+      keyManager.tryDeleteKey(jsonKeyName);
+      keyManager.tryDeleteKey(p12KeyName);
       tryDeleteSecret(existingSecret);
     }
 
@@ -198,8 +197,8 @@ class KubernetesGCPServiceAccountSecretManager {
       if (e.getCode() == 409) {
         LOG.debug("Secret with name {} already exists", secretName);
         // Delete the previously generated GCP keys since another entity already created the secret
-        tryDeleteServiceAccountKey(jsonKey.getName());
-        tryDeleteServiceAccountKey(p12Key.getName());
+        keyManager.tryDeleteKey(jsonKey.getName());
+        keyManager.tryDeleteKey(p12Key.getName());
         return;
       }
     }
@@ -244,8 +243,8 @@ class KubernetesGCPServiceAccountSecretManager {
     // Delete keys and secrets for all inactive service accounts and let them be recreated by future executions
     for (Secret secret : inactiveServiceAccountSecrets) {
       final Map<String, String> annotations = secret.getMetadata().getAnnotations();
-      tryDeleteServiceAccountKey(annotations.get(STYX_WORKFLOW_SA_JSON_KEY_NAME_ANNOTATION));
-      tryDeleteServiceAccountKey(annotations.get(STYX_WORKFLOW_SA_P12_KEY_NAME_ANNOTATION));
+      keyManager.tryDeleteKey(annotations.get(STYX_WORKFLOW_SA_JSON_KEY_NAME_ANNOTATION));
+      keyManager.tryDeleteKey(annotations.get(STYX_WORKFLOW_SA_P12_KEY_NAME_ANNOTATION));
       tryDeleteSecret(secret);
     }
   }
@@ -285,26 +284,6 @@ class KubernetesGCPServiceAccountSecretManager {
       }
     } catch (Exception e) {
       LOG.warn("[AUDIT] Failed to delete secret {}", secret.getMetadata().getName());
-    }
-  }
-
-  /**
-   * Try to delete a service account key, logging failures without throwing exceptions.
-   * @param keyName The fully qualified name of the key to delete.
-   */
-  private void tryDeleteServiceAccountKey(String keyName) {
-    LOG.info("[AUDIT] Deleting service account key: {}", keyName);
-    try {
-      keyManager.deleteKey(keyName);
-    } catch (GoogleJsonResponseException e) {
-      if (GcpUtil.isPermissionDenied(e)) {
-        LOG.warn("[AUDIT] Permission denied when trying to delete unused service account key {}",
-            keyName);
-      } else {
-        LOG.warn("[AUDIT] Failed to delete key {}", keyName);
-      }
-    } catch (Exception e) {
-      LOG.warn("[AUDIT] Failed to delete key {}", keyName);
     }
   }
 

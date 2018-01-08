@@ -24,6 +24,7 @@ import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.services.iam.v1.Iam;
 import com.google.api.services.iam.v1.model.CreateServiceAccountKeyRequest;
 import com.google.api.services.iam.v1.model.ServiceAccountKey;
+import com.spotify.styx.util.GcpUtil;
 import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,7 +85,13 @@ public class ServiceAccountKeyManager {
         .execute();
   }
 
-  public void deleteKey(String keyName) throws IOException {
+  /**
+   * Attempt to delete a service account key as a best effort procedure. Exceptions are logged but
+   * not re-thrown.
+   * @param keyName The fully qualified name of the key to delete.
+   */
+  public void tryDeleteKey(String keyName) {
+    LOG.info("[AUDIT] Deleting service account key: {}", keyName);
     try {
       iam.projects().serviceAccounts().keys()
           .delete(keyName)
@@ -95,7 +102,9 @@ public class ServiceAccountKeyManager {
         LOG.debug("Couldn't find key to delete {}", keyName);
         return;
       }
-      throw e;
+      LOG.warn("[AUDIT] Failed to delete key {}", keyName, e);
+    } catch (Exception e) {
+      LOG.warn("[AUDIT] Failed to delete key {}", keyName, e);
     }
   }
 }
