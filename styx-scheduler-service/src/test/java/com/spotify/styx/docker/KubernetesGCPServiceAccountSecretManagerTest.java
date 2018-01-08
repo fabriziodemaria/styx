@@ -58,6 +58,7 @@ import io.fabric8.kubernetes.api.model.PodStatus;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.SecretBuilder;
 import io.fabric8.kubernetes.api.model.SecretList;
+import io.fabric8.kubernetes.api.model.Status;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.NamespacedKubernetesClient;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
@@ -154,7 +155,6 @@ public class KubernetesGCPServiceAccountSecretManagerTest {
 
   @Test
   public void shouldCreateServiceAccountKeysAndSecret() throws IsClosedException, IOException {
-
     when(serviceAccountKeyManager.serviceAccountExists(SERVICE_ACCOUNT)).thenReturn(true);
 
     ServiceAccountKey jsonKey = new ServiceAccountKey();
@@ -176,6 +176,29 @@ public class KubernetesGCPServiceAccountSecretManagerTest {
     assertThat(createdSecret.getMetadata().getAnnotations(), hasEntry("styx-wf-sa", SERVICE_ACCOUNT));
     assertThat(createdSecret.getData(), hasEntry("styx-wf-sa.json", jsonKey.getPrivateKeyData()));
     assertThat(createdSecret.getData(), hasEntry("styx-wf-sa.p12", p12Key.getPrivateKeyData()));
+  }
+
+  @Test
+  public void shouldDeleteGCPKeysIfSecretAlreadyExists() throws IsClosedException, IOException {
+    when(serviceAccountKeyManager.serviceAccountExists(SERVICE_ACCOUNT)).thenReturn(true);
+
+    ServiceAccountKey jsonKey = new ServiceAccountKey();
+    jsonKey.setName("key.json");
+    jsonKey.setPrivateKeyData("json-private-key-data");
+    ServiceAccountKey p12Key = new ServiceAccountKey();
+    p12Key.setName("key.p12");
+    p12Key.setPrivateKeyData("p12-private-key-data");
+    when(serviceAccountKeyManager.createJsonKey(any(String.class))).thenReturn(jsonKey);
+    when(serviceAccountKeyManager.createP12Key(any(String.class))).thenReturn(p12Key);
+    when(k8sClient.secrets().create(any())).thenThrow(new KubernetesClientException(
+        "Already exists", 409, new Status()));
+
+    sut.ensureServiceAccountKeySecret(WORKFLOW_ID.toString(), SERVICE_ACCOUNT);
+
+    verify(serviceAccountKeyManager).createJsonKey(SERVICE_ACCOUNT);
+    verify(serviceAccountKeyManager).createP12Key(SERVICE_ACCOUNT);
+    verify(serviceAccountKeyManager).deleteKey("key.json");
+    verify(serviceAccountKeyManager).deleteKey("key.p12");
   }
 
   @Test
@@ -233,7 +256,6 @@ public class KubernetesGCPServiceAccountSecretManagerTest {
     verify(serviceAccountKeyManager, times(1)).createJsonKey(SERVICE_ACCOUNT);
     verify(serviceAccountKeyManager, times(1)).createP12Key(SERVICE_ACCOUNT);
   }
-
 
   @Test
   public void shouldRemoveServiceAccountSecretsAndKeys() throws Exception {
