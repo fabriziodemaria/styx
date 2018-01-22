@@ -192,8 +192,8 @@ class DatastoreStorage {
     return enabledWorkflows;
   }
 
-  WorkflowId store(Workflow workflow) throws IOException {
-    return runInTransaction(tx -> tx.store(workflow));
+  void store(Workflow workflow) throws IOException {
+    runFunctionInTransaction(tx -> tx.store(workflow));
   }
 
   Optional<Workflow> workflow(WorkflowId workflowId) throws IOException {
@@ -210,20 +210,7 @@ class DatastoreStorage {
   }
 
   public void updateNextNaturalTrigger(WorkflowId workflowId, TriggerInstantSpec triggerSpec) throws IOException {
-    storeWithRetries(() -> datastore.runInTransaction(transaction -> {
-      final Key workflowKey = workflowKey(workflowId);
-      final Optional<Entity> workflowOpt = getOpt(transaction, workflowKey);
-      if (!workflowOpt.isPresent()) {
-        throw new ResourceNotFoundException(
-            String.format("%s:%s doesn't exist.", workflowId.componentId(), workflowId.id()));
-      }
-
-      final Entity.Builder builder = Entity
-          .newBuilder(workflowOpt.get())
-          .set(PROPERTY_NEXT_NATURAL_TRIGGER, instantToTimestamp(triggerSpec.instant()))
-          .set(PROPERTY_NEXT_NATURAL_OFFSET_TRIGGER, instantToTimestamp(triggerSpec.offsetInstant()));
-      return transaction.put(builder.build());
-    }));
+    runConsumerInTransaction(tx -> tx.updateNextNaturalTrigger(workflowId, triggerSpec));
   }
 
   @Deprecated
@@ -521,7 +508,7 @@ class DatastoreStorage {
     patchState(workflowId1, WorkflowState.patchEnabled(enabled));
   }
 
-  private static Timestamp instantToTimestamp(Instant instant) {
+  static Timestamp instantToTimestamp(Instant instant) {
     return Timestamp.of(Date.from(instant));
   }
 
@@ -696,13 +683,29 @@ class DatastoreStorage {
     return this.<T>readOpt(entity, property).orElse(defaultValue);
   }
 
-  public <T, E extends Exception> T runInTransaction(TransactionFunction<T, E> f)
+  public <T, E extends Exception> T runFunctionInTransaction(TransactionFunction<T, E> f)
       throws IOException, E {
     final TransactionalStorage tx = newTransaction();
     try {
       final T value = f.apply(tx);
       tx.commit();
       return value;
+    } catch (DatastoreException ex) {
+      tx.rollback();
+      throw new TransactionException(false, ex);
+    } finally {
+      if (tx.isActive()) {
+        tx.rollback();
+      }
+    }
+  }
+
+  public <E extends Exception> void runConsumerInTransaction(TransactionConsumer<E> f)
+      throws IOException, E {
+    final TransactionalStorage tx = newTransaction();
+    try {
+      f.accept(tx);
+      tx.commit();
     } catch (DatastoreException ex) {
       tx.rollback();
       throw new TransactionException(false, ex);

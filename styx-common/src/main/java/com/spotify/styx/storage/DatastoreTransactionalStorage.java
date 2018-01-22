@@ -21,6 +21,8 @@
 package com.spotify.styx.storage;
 
 import static com.spotify.styx.serialization.Json.OBJECT_MAPPER;
+import static com.spotify.styx.storage.DatastoreStorage.PROPERTY_NEXT_NATURAL_OFFSET_TRIGGER;
+import static com.spotify.styx.storage.DatastoreStorage.PROPERTY_NEXT_NATURAL_TRIGGER;
 import static com.spotify.styx.storage.DatastoreStorage.PROPERTY_WORKFLOW_JSON;
 
 import com.google.cloud.datastore.DatastoreException;
@@ -30,6 +32,8 @@ import com.google.cloud.datastore.StringValue;
 import com.google.cloud.datastore.Transaction;
 import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowId;
+import com.spotify.styx.util.ResourceNotFoundException;
+import com.spotify.styx.util.TriggerInstantSpec;
 import java.io.IOException;
 import java.util.Objects;
 import java.util.Optional;
@@ -37,11 +41,11 @@ import java.util.Optional;
 class DatastoreTransactionalStorage implements TransactionalStorage {
 
   private final Transaction tx;
-  private final DatastoreStorage storage;
+  private final DatastoreStorage datastoreStorage;
 
-  DatastoreTransactionalStorage(DatastoreStorage storage,
-      Transaction transaction) {
-    this.storage = Objects.requireNonNull(storage);
+  DatastoreTransactionalStorage(DatastoreStorage datastoreStorage,
+                                Transaction transaction) {
+    this.datastoreStorage = Objects.requireNonNull(datastoreStorage);
     this.tx = Objects.requireNonNull(transaction);
   }
 
@@ -71,15 +75,15 @@ class DatastoreTransactionalStorage implements TransactionalStorage {
 
   @Override
   public WorkflowId store(Workflow workflow) throws IOException {
-    final Key componentKey = storage.componentKeyFactory.newKey(workflow.componentId());
+    final Key componentKey = datastoreStorage.componentKeyFactory.newKey(workflow.componentId());
     if (tx.get(componentKey) == null) {
       tx.put(Entity.newBuilder(componentKey).build());
     }
 
     final String json = OBJECT_MAPPER.writeValueAsString(workflow);
-    final Key workflowKey = storage.workflowKey(workflow.id());
-    final Optional<Entity> workflowOpt = storage.getOpt(tx, workflowKey);
-    final Entity workflowEntity = storage.asBuilderOrNew(workflowOpt, workflowKey)
+    final Key workflowKey = datastoreStorage.workflowKey(workflow.id());
+    final Optional<Entity> workflowOpt = datastoreStorage.getOpt(tx, workflowKey);
+    final Entity workflowEntity = datastoreStorage.asBuilderOrNew(workflowOpt, workflowKey)
         .set(PROPERTY_WORKFLOW_JSON,
             StringValue.newBuilder(json).setExcludeFromIndexes(true).build())
         .build();
@@ -87,5 +91,21 @@ class DatastoreTransactionalStorage implements TransactionalStorage {
     tx.put(workflowEntity);
 
     return workflow.id();
+  }
+
+  @Override
+  public void updateNextNaturalTrigger(WorkflowId workflowId, TriggerInstantSpec triggerSpec) throws IOException {
+    final Key workflowKey = datastoreStorage.workflowKey(workflowId);
+    final Optional<Entity> workflowOpt = datastoreStorage.getOpt(tx, workflowKey);
+    if (!workflowOpt.isPresent()) {
+      throw new ResourceNotFoundException(
+          String.format("%s:%s doesn't exist.", workflowId.componentId(), workflowId.id()));
+    }
+
+    final Entity.Builder builder = Entity
+        .newBuilder(workflowOpt.get())
+        .set(PROPERTY_NEXT_NATURAL_TRIGGER, DatastoreStorage.instantToTimestamp(triggerSpec.instant()))
+        .set(PROPERTY_NEXT_NATURAL_OFFSET_TRIGGER, DatastoreStorage.instantToTimestamp(triggerSpec.offsetInstant()));
+    tx.put(builder.build());
   }
 }

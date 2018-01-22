@@ -37,7 +37,6 @@ import com.spotify.styx.util.ResourceNotFoundException;
 import com.spotify.styx.util.TriggerInstantSpec;
 import com.spotify.styx.util.WorkflowStateUtil;
 import java.io.IOException;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -273,7 +272,13 @@ public class InMemStorage implements Storage {
   }
 
   @Override
-  public <T, E extends Exception> T runInTransaction(TransactionFunction<T, E> f)
+  public <T, E extends Exception> T runFunctionInTransaction(TransactionFunction<T, E> f)
+      throws IOException, E {
+    throw new UnsupportedOperationException("Unsupported Operation!");
+  }
+
+  @Override
+  public <E extends Exception> void runConsumerInTransaction(TransactionConsumer<E> f)
       throws IOException, E {
     throw new UnsupportedOperationException("Unsupported Operation!");
   }

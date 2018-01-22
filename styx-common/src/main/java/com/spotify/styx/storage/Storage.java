@@ -20,7 +20,6 @@
 
 package com.spotify.styx.storage;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.spotify.styx.model.Backfill;
 import com.spotify.styx.model.Resource;
 import com.spotify.styx.model.SequenceEvent;
@@ -32,7 +31,6 @@ import com.spotify.styx.model.WorkflowState;
 import com.spotify.styx.model.data.WorkflowInstanceExecutionData;
 import com.spotify.styx.util.TriggerInstantSpec;
 import java.io.IOException;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -260,6 +258,13 @@ public interface Storage {
    * Run a function in a transaction that is committed if successful. Any exception thrown by the
    * passed in function will cause the transaction to be rolled back.
    */
-  <T, E extends Exception> T runInTransaction(TransactionFunction<T, E> f)
+  <T, E extends Exception> T runFunctionInTransaction(TransactionFunction<T, E> f)
+      throws IOException, E;
+
+  /**
+   * Run a consumer in a transaction that is committed if successful. Any exception thrown by the
+   * passed in consumer will cause the transaction to be rolled back.
+   */
+  <E extends Exception> void runConsumerInTransaction(TransactionConsumer<E> f)
       throws IOException, E;
 }

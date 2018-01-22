@@ -38,6 +38,7 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -106,6 +107,7 @@ public class DatastoreStorageTest {
   @Mock Datastore datastore;
   @Mock DatastoreTransactionalStorage transactionalStorage;
   @Mock TransactionFunction<String, FooException> transactionFunction;
+  @Mock TransactionConsumer<FooException> transactionConsumer;
   @Mock BiFunction<DatastoreStorage, Transaction, DatastoreTransactionalStorage> transactionalStorageFactory;
 
   @BeforeClass
@@ -513,10 +515,26 @@ public class DatastoreStorageTest {
     when(datastore.newTransaction()).thenReturn(transaction);
     when(transactionFunction.apply(any())).thenReturn("foo");
 
-    String result = storage.runInTransaction(transactionFunction);
+    String result = storage.runFunctionInTransaction(transactionFunction);
 
     assertThat(result, is("foo"));
     verify(transactionFunction).apply(transactionalStorage);
+    verify(transactionalStorage).commit();
+    verify(transactionalStorage, never()).rollback();
+  }
+
+  @Test
+  public void runInTransactionShouldCallConsumerAndCommit() throws Exception {
+    when(datastore.newKeyFactory()).thenReturn(new KeyFactory("foo", "bar"));
+    final DatastoreStorage storage = new DatastoreStorage(
+        datastore, Duration.ZERO, transactionalStorageFactory);
+    when(transactionalStorageFactory.apply(storage, transaction))
+        .thenReturn(transactionalStorage);
+    when(datastore.newTransaction()).thenReturn(transaction);
+
+    storage.runConsumerInTransaction(transactionConsumer);
+
+    verify(transactionConsumer).accept(transactionalStorage);
     verify(transactionalStorage).commit();
     verify(transactionalStorage, never()).rollback();
   }
@@ -534,7 +552,7 @@ public class DatastoreStorageTest {
     when(transactionalStorage.isActive()).thenReturn(true);
 
     try {
-      storage.runInTransaction(transactionFunction);
+      storage.runFunctionInTransaction(transactionFunction);
       fail("Expected exception!");
     } catch (FooException e) {
       // Verify that we can throw a user defined checked exception type inside the transaction
@@ -543,6 +561,32 @@ public class DatastoreStorageTest {
     }
 
     verify(transactionFunction).apply(transactionalStorage);
+    verify(transactionalStorage, never()).commit();
+    verify(transactionalStorage).rollback();
+  }
+
+  @Test
+  public void runInTransactionShouldCallConsumerAndRollbackOnFailure() throws Exception {
+    when(datastore.newKeyFactory()).thenReturn(new KeyFactory("foo", "bar"));
+    final DatastoreStorage storage = new DatastoreStorage(
+        datastore, Duration.ZERO, transactionalStorageFactory);
+    when(transactionalStorageFactory.apply(storage, transaction))
+        .thenReturn(transactionalStorage);
+    when(datastore.newTransaction()).thenReturn(transaction);
+    final Exception expectedException = new FooException();
+    doThrow(expectedException).when(transactionConsumer).accept(any());
+    when(transactionalStorage.isActive()).thenReturn(true);
+
+    try {
+      storage.runConsumerInTransaction(transactionConsumer);
+      fail("Expected exception!");
+    } catch (FooException e) {
+      // Verify that we can throw a user defined checked exception type inside the transaction
+      // body and catch it
+      assertThat(e, is(expectedException));
+    }
+
+    verify(transactionConsumer).accept(transactionalStorage);
     verify(transactionalStorage, never()).commit();
     verify(transactionalStorage).rollback();
   }

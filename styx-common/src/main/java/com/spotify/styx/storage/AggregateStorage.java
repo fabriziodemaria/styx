@@ -33,7 +33,6 @@ import com.spotify.styx.model.data.WorkflowInstanceExecutionData;
 import com.spotify.styx.util.TriggerInstantSpec;
 import java.io.IOException;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -225,7 +224,13 @@ public class AggregateStorage implements Storage {
   }
 
   @Override
-  public <T, E extends Exception> T runInTransaction(TransactionFunction<T, E> f) throws IOException, E {
-    return datastoreStorage.runInTransaction(f);
+  public <T, E extends Exception> T runFunctionInTransaction(TransactionFunction<T, E> f) throws IOException, E {
+    return datastoreStorage.runFunctionInTransaction(f);
+  }
+
+  @Override
+  public <E extends Exception> void runConsumerInTransaction(TransactionConsumer<E> f)
+      throws IOException, E {
+    datastoreStorage.runConsumerInTransaction(f);
   }
 }

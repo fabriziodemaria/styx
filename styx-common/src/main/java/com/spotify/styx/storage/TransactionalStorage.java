@@ -22,13 +22,15 @@ package com.spotify.styx.storage;
 
 import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowId;
+import com.spotify.styx.util.TriggerInstantSpec;
 import java.io.IOException;
 
 /**
  * The interface to the persistence layer where the same transaction can be used across storage
  * operations.
  *
- * <p>Use the {@link Storage#runInTransaction(TransactionFunction)} method for automatic
+ * <p>Use the {@link Storage#runFunctionInTransaction(TransactionFunction)} or
+ * {@link Storage#runConsumerInTransaction(TransactionConsumer)} method for automatic
  * commit/rollback handling.
  */
 public interface TransactionalStorage {
@@ -39,6 +41,15 @@ public interface TransactionalStorage {
    * @param workflow the workflow to store
    */
   WorkflowId store(Workflow workflow) throws IOException;
+
+  /**
+   * Updates the next natural trigger for a {@link Workflow}.
+   *
+   * @param workflowId  The {@link WorkflowId} to update the next natural trigger for.
+   * @param triggerSpec The next natural trigger spec describing when the {@link Workflow} should
+   *                    be instantiated.
+   */
+  void updateNextNaturalTrigger(WorkflowId workflowId, TriggerInstantSpec triggerSpec) throws IOException;
 
   /**
    * Commit all the storage operations previously called.

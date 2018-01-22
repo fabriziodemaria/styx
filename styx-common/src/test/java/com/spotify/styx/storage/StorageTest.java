@@ -23,6 +23,7 @@ package com.spotify.styx.storage;
 import static org.junit.Assert.fail;
 
 import com.spotify.styx.model.Workflow;
+import com.spotify.styx.model.WorkflowState;
 import java.io.IOException;
 import java.util.concurrent.ThreadLocalRandom;
 import org.junit.Test;
@@ -37,11 +38,11 @@ public class StorageTest {
   @Mock Workflow workflow;
 
   @Test
-  public void shouldBePossibleToThrowUserDefinedExceptionInTransactionBody() {
+  public void shouldBePossibleToThrowUserDefinedExceptionInFunctionBody() {
     // Note that this is a compile-time test. The transaction body is not actually executed, we're
     // just verifying that the type system allows this code to compile.
     try {
-      sut.runInTransaction(tx -> {
+      sut.runFunctionInTransaction(tx -> {
         switch (ThreadLocalRandom.current().nextInt()) {
           case 0:
             throw new FooException();
@@ -55,7 +56,30 @@ public class StorageTest {
       fail(); // Satisfy static analysis rule requiring assert or fail in junit tests
       
       // The throws declaration of the above lambda should be inferred to FooException, not the
-      // generic Exception. This allows a try/catch wrapping the runInTransaction call to catch
+      // generic Exception. This allows a try/catch wrapping the runFunctionInTransaction call to catch
+      // a user defined checked exception type to communicate a business logic exception without
+      // having to do a generic catch Exception.
+    }
+  }
+
+  @Test
+  public void shouldBePossibleToThrowUserDefinedExceptionInConsumerBody() {
+    // Note that this is a compile-time test. The transaction body is not actually executed, we're
+    // just verifying that the type system allows this code to compile.
+    try {
+      sut.runConsumerInTransaction(tx -> {
+        switch (ThreadLocalRandom.current().nextInt()) {
+          case 0:
+            throw new FooException();
+          default:
+            tx.patchState(workflow.id(), WorkflowState.builder().build());
+        }
+      });
+    } catch (IOException | FooException ignore) {
+      fail(); // Satisfy static analysis rule requiring assert or fail in junit tests
+
+      // The throws declaration of the above lambda should be inferred to FooException, not the
+      // generic Exception. This allows a try/catch wrapping the runConsumerInTransaction call to catch
       // a user defined checked exception type to communicate a business logic exception without
       // having to do a generic catch Exception.
     }
