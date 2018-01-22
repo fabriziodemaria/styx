@@ -23,6 +23,7 @@ package com.spotify.styx.storage;
 import static com.spotify.styx.serialization.Json.OBJECT_MAPPER;
 import static com.spotify.styx.storage.DatastoreStorage.PROPERTY_NEXT_NATURAL_OFFSET_TRIGGER;
 import static com.spotify.styx.storage.DatastoreStorage.PROPERTY_NEXT_NATURAL_TRIGGER;
+import static com.spotify.styx.storage.DatastoreStorage.PROPERTY_WORKFLOW_ENABLED;
 import static com.spotify.styx.storage.DatastoreStorage.PROPERTY_WORKFLOW_JSON;
 
 import com.google.cloud.datastore.DatastoreException;
@@ -32,6 +33,7 @@ import com.google.cloud.datastore.StringValue;
 import com.google.cloud.datastore.Transaction;
 import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowId;
+import com.spotify.styx.model.WorkflowState;
 import com.spotify.styx.util.ResourceNotFoundException;
 import com.spotify.styx.util.TriggerInstantSpec;
 import java.io.IOException;
@@ -106,6 +108,24 @@ class DatastoreTransactionalStorage implements TransactionalStorage {
         .newBuilder(workflowOpt.get())
         .set(PROPERTY_NEXT_NATURAL_TRIGGER, DatastoreStorage.instantToTimestamp(triggerSpec.instant()))
         .set(PROPERTY_NEXT_NATURAL_OFFSET_TRIGGER, DatastoreStorage.instantToTimestamp(triggerSpec.offsetInstant()));
+    tx.put(builder.build());
+  }
+
+  @Override
+  public void patchState(WorkflowId workflowId, WorkflowState state) throws IOException {
+    final Key workflowKey = datastoreStorage.workflowKey(workflowId);
+    final Optional<Entity> workflowOpt = datastoreStorage.getOpt(tx, workflowKey);
+    if (!workflowOpt.isPresent()) {
+      throw new ResourceNotFoundException(
+          String.format("%s:%s doesn't exist.", workflowId.componentId(), workflowId.id()));
+    }
+
+    final Entity.Builder builder = Entity.newBuilder(workflowOpt.get());
+    state.enabled().ifPresent(x -> builder.set(PROPERTY_WORKFLOW_ENABLED, x));
+    state.nextNaturalTrigger()
+        .ifPresent(x -> builder.set(PROPERTY_NEXT_NATURAL_TRIGGER, DatastoreStorage.instantToTimestamp(x)));
+    state.nextNaturalOffsetTrigger()
+        .ifPresent(x -> builder.set(PROPERTY_NEXT_NATURAL_OFFSET_TRIGGER, DatastoreStorage.instantToTimestamp(x)));
     tx.put(builder.build());
   }
 }

@@ -22,6 +22,7 @@ package com.spotify.styx.storage;
 
 import com.spotify.styx.model.Workflow;
 import com.spotify.styx.model.WorkflowId;
+import com.spotify.styx.model.WorkflowState;
 import com.spotify.styx.util.TriggerInstantSpec;
 import java.io.IOException;
 
@@ -50,6 +51,16 @@ public interface TransactionalStorage {
    *                    be instantiated.
    */
   void updateNextNaturalTrigger(WorkflowId workflowId, TriggerInstantSpec triggerSpec) throws IOException;
+
+  /**
+   * Patches the workflow state used by all its {@link Workflow}s.
+   *
+   * <p>All the present fields in {@link WorkflowState} will be modified atomically.
+   *
+   * @param workflowId  The workflow to set the flag for
+   * @param state       The state object with optional fields to patch
+   */
+  void patchState(WorkflowId workflowId, WorkflowState state) throws IOException;
 
   /**
    * Commit all the storage operations previously called.

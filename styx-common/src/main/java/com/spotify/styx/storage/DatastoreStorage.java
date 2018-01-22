@@ -350,22 +350,7 @@ class DatastoreStorage {
   }
 
   void patchState(WorkflowId workflowId, WorkflowState state) throws IOException {
-    storeWithRetries(() -> datastore.runInTransaction(transaction -> {
-      final Key workflowKey = workflowKey(workflowId);
-      final Optional<Entity> workflowOpt = getOpt(transaction, workflowKey);
-      if (!workflowOpt.isPresent()) {
-        throw new ResourceNotFoundException(
-            String.format("%s:%s doesn't exist.", workflowId.componentId(), workflowId.id()));
-      }
-
-      final Entity.Builder builder = Entity.newBuilder(workflowOpt.get());
-      state.enabled().ifPresent(x -> builder.set(PROPERTY_WORKFLOW_ENABLED, x));
-      state.nextNaturalTrigger()
-          .ifPresent(x -> builder.set(PROPERTY_NEXT_NATURAL_TRIGGER, instantToTimestamp(x)));
-      state.nextNaturalOffsetTrigger()
-          .ifPresent(x -> builder.set(PROPERTY_NEXT_NATURAL_OFFSET_TRIGGER, instantToTimestamp(x)));
-      return transaction.put(builder.build());
-    }));
+    runConsumerInTransaction(tx -> tx.patchState(workflowId, state));
   }
 
   public WorkflowState workflowState(WorkflowId workflowId) throws IOException {
