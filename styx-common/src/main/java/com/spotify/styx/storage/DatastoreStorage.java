@@ -213,24 +213,6 @@ class DatastoreStorage {
     runConsumerInTransaction(tx -> tx.updateNextNaturalTrigger(workflowId, triggerSpec));
   }
 
-  @Deprecated
-  @VisibleForTesting
-  public void updateNextNaturalTrigger(WorkflowId workflowId, Instant instant) throws IOException {
-    storeWithRetries(() -> datastore.runInTransaction(transaction -> {
-      final Key workflowKey = workflowKey(workflowId);
-      final Optional<Entity> workflowOpt = getOpt(transaction, workflowKey);
-      if (!workflowOpt.isPresent()) {
-        throw new ResourceNotFoundException(
-            String.format("%s:%s doesn't exist.", workflowId.componentId(), workflowId.id()));
-      }
-
-      final Entity.Builder builder = Entity
-          .newBuilder(workflowOpt.get())
-          .set(PROPERTY_NEXT_NATURAL_TRIGGER, instantToTimestamp(instant));
-      return transaction.put(builder.build());
-    }));
-  }
-
   public Map<Workflow, TriggerInstantSpec> workflowsWithNextNaturalTrigger() throws IOException {
     final Map<Workflow, TriggerInstantSpec> map = Maps.newHashMap();
     final EntityQuery query =

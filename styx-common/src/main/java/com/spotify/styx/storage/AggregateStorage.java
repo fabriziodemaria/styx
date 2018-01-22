@@ -149,11 +149,6 @@ public class AggregateStorage implements Storage {
   }
 
   @Override
-  public void updateNextNaturalTriggerOld(WorkflowId workflowId, Instant instant) throws IOException {
-    datastoreStorage.updateNextNaturalTrigger(workflowId, instant);
-  }
-
-  @Override
   public Map<Workflow, TriggerInstantSpec> workflowsWithNextNaturalTrigger() throws IOException {
     return datastoreStorage.workflowsWithNextNaturalTrigger();
   }

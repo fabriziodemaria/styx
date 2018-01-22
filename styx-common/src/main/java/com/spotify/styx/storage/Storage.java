@@ -108,10 +108,6 @@ public interface Storage {
    */
   void updateNextNaturalTrigger(WorkflowId workflowId, TriggerInstantSpec triggerSpec) throws IOException;
 
-  @Deprecated
-  @VisibleForTesting
-  void updateNextNaturalTriggerOld(WorkflowId workflowId, Instant instant) throws IOException;
-
   /**
    * Get {@link Workflow}s with their respective nextNaturalTrigger. Only workflows that have a nextNaturalTrigger
    * will be returned.

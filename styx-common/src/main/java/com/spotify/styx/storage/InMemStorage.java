@@ -115,12 +115,6 @@ public class InMemStorage implements Storage {
   }
 
   @Override
-  public void updateNextNaturalTriggerOld(WorkflowId workflowId, Instant instant)
-      throws IOException {
-    throw new UnsupportedOperationException("Unsupported Operation!");
-  }
-
-  @Override
   public Map<Workflow, TriggerInstantSpec> workflowsWithNextNaturalTrigger() throws IOException {
     throw new UnsupportedOperationException("Unsupported Operation!");
   }
