@@ -321,6 +321,12 @@ public class StyxScheduler implements AppInit {
         outputHandlerExecutorQueue,
         eventTf);
     closer.register(executorCloser("output-handler", outputHandlerExecutor));
+    final BlockingQueue<Runnable> eventTransitionExecutorQueue = new LinkedBlockingQueue<>();
+    final ExecutorService eventTransitionExecutor = new ThreadPoolExecutor(16, 16,
+        0L, TimeUnit.MILLISECONDS,
+        eventTransitionExecutorQueue,
+        eventTf);
+    closer.register(executorCloser("event-transition", eventTransitionExecutor));
     final ExecutorService eventConsumerExecutor = Executors.newSingleThreadExecutor();
     closer.register(executorCloser("event-consumer", eventConsumerExecutor));
 
@@ -334,7 +340,7 @@ public class StyxScheduler implements AppInit {
     //       take StateManager as argument instead?
     final List<OutputHandler> outputHandlers = new ArrayList<>();
     final QueuedStateManager stateManager = closer.register(
-        new QueuedStateManager(time, outputHandlerExecutor, storage,
+        new QueuedStateManager(time, outputHandlerExecutor, eventTransitionExecutor, storage,
             eventConsumerFactory.apply(environment, stats), eventConsumerExecutor, fanOutput(outputHandlers)));
 
     final Config staleStateTtlConfig = config.getConfig(STYX_STALE_STATE_TTL_CONFIG);

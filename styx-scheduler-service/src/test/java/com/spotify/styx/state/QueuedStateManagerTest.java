@@ -86,6 +86,7 @@ public class QueuedStateManagerTest {
   private static final BiConsumer<SequenceEvent, RunState> eventConsumer = (e, s) -> {};
 
   private final ExecutorService outputHandlerExecutor = Executors.newFixedThreadPool(16);
+  private final ExecutorService eventTransitionExecutor = Executors.newFixedThreadPool(16);
   private final ExecutorService eventConsumerExecutor = Executors.newSingleThreadExecutor();
 
 
@@ -107,7 +108,8 @@ public class QueuedStateManagerTest {
         a -> a.getArgumentAt(0, TransactionFunction.class).apply(transaction));
     doNothing().when(outputHandler).transitionInto(runStateCaptor.capture());
     stateManager = new QueuedStateManager(
-        time, outputHandlerExecutor, storage, eventConsumer, eventConsumerExecutor, outputHandler);
+        time, outputHandlerExecutor, eventTransitionExecutor, storage, eventConsumer,
+        eventConsumerExecutor, outputHandler);
   }
 
   @After
@@ -202,7 +204,6 @@ public class QueuedStateManagerTest {
 
   @Test
   public void shouldCloseGracefully() throws Exception {
-
     when(transaction.activeState(INSTANCE)).thenReturn(
         Optional.of(PersistentWorkflowInstanceState
             .builder()
