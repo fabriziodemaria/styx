@@ -32,6 +32,7 @@ import com.spotify.styx.state.StateManager;
 import com.spotify.styx.state.Trigger;
 import com.spotify.styx.storage.Storage;
 import com.spotify.styx.util.AlreadyInitializedException;
+import com.spotify.styx.util.IsClosedException;
 import com.spotify.styx.util.TriggerUtil;
 import java.io.IOException;
 import java.time.Instant;
