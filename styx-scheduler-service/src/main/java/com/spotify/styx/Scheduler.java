@@ -135,9 +135,14 @@ public class Scheduler {
                           Resource.create(GLOBAL_RESOURCE_ID, concurrency)));
 
     final List<InstanceState> activeStates;
-    activeStates = stateManager.activeStates().entrySet().stream()
-        .map(entry -> InstanceState.create(entry.getKey(), entry.getValue()))
-        .collect(toList());
+    try {
+      activeStates = storage.readActiveWorkflowInstances().entrySet().stream()
+          .map(entry -> InstanceState.create(entry.getKey(), entry.getValue()))
+          .collect(toList());
+    } catch (IOException e) {
+      LOG.warn("Failed to get active states", e);
+      return;
+    }
 
     final Set<WorkflowInstance> timedOutInstances =
         activeStates.parallelStream()

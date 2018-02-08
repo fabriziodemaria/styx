@@ -26,6 +26,7 @@ import com.spotify.styx.model.WorkflowInstance;
 import com.spotify.styx.monitoring.Stats;
 import com.spotify.styx.state.StateManager;
 import com.spotify.styx.state.Trigger;
+import com.spotify.styx.storage.Storage;
 import com.spotify.styx.util.Debug;
 import io.fabric8.kubernetes.client.NamespacedKubernetesClient;
 import io.norberg.automatter.AutoMatter;
@@ -117,12 +118,14 @@ public interface DockerRunner extends Closeable {
     return new LocalDockerRunner(executorService, stateManager);
   }
 
-  static DockerRunner kubernetes(NamespacedKubernetesClient kubernetesClient, StateManager stateManager,
-      Stats stats, ServiceAccountKeyManager serviceAccountKeyManager, Debug debug) {
+  static DockerRunner kubernetes(
+      NamespacedKubernetesClient kubernetesClient, StateManager stateManager, Stats stats,
+      ServiceAccountKeyManager serviceAccountKeyManager, Debug debug, Storage storage) {
     final KubernetesGCPServiceAccountSecretManager serviceAccountSecretManager =
         new KubernetesGCPServiceAccountSecretManager(kubernetesClient, serviceAccountKeyManager);
     final KubernetesDockerRunner dockerRunner =
-        new KubernetesDockerRunner(kubernetesClient, stateManager, stats, serviceAccountSecretManager, debug);
+        new KubernetesDockerRunner(kubernetesClient, stateManager, stats,
+            serviceAccountSecretManager, debug, storage);
 
     dockerRunner.init();
 

@@ -21,7 +21,6 @@
 package com.spotify.styx.state;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
-import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
@@ -38,7 +37,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.common.base.Throwables;
-import com.google.common.collect.Maps;
 import com.spotify.styx.RepeatRule;
 import com.spotify.styx.model.Event;
 import com.spotify.styx.model.SequenceEvent;
@@ -54,7 +52,6 @@ import com.spotify.styx.util.IsClosedException;
 import com.spotify.styx.util.Time;
 import java.io.IOException;
 import java.time.Instant;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -429,32 +426,6 @@ public class QueuedStateManagerTest {
 
     verify(transaction, never()).updateActiveState(any(), any());
   }
-
-  @Test
-  public void shouldGetRunState() throws Exception {
-    RunState runState = RunState.create(
-        INSTANCE, State.QUEUED, StateData.zero(), NOW.minusMillis(1), 17);
-    when(storage.readActiveWorkflowInstance(INSTANCE)).thenReturn(Optional.of(runState));
-
-    RunState returnedRunState = stateManager.get(INSTANCE);
-
-    assertThat(runState, equalTo(returnedRunState));
-  }
-
-  @Test
-  public void shouldGetRunStates() throws Exception {
-    RunState runState = RunState.create(
-        INSTANCE, State.QUEUED, StateData.zero(), NOW.minusMillis(1), 17);
-    Map<WorkflowInstance, RunState> states = Maps.newConcurrentMap();
-    states.put(INSTANCE, runState);
-    when(storage.readActiveWorkflowInstances()).thenReturn(states);
-
-    Map<WorkflowInstance, RunState> returnedRunStates = stateManager.activeStates();
-
-    assertThat(returnedRunStates.get(INSTANCE), is(runState));
-    assertThat(returnedRunStates.size(), is(1));
-  }
-
 
   @Test
   public void triggerShouldHandleThrowingOutputHandler() throws Exception {

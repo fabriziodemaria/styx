@@ -45,6 +45,7 @@ import com.spotify.styx.state.Message;
 import com.spotify.styx.state.RunState;
 import com.spotify.styx.state.StateManager;
 import com.spotify.styx.state.Trigger;
+import com.spotify.styx.storage.Storage;
 import com.spotify.styx.util.Debug;
 import com.spotify.styx.util.EventUtil;
 import com.spotify.styx.util.IsClosedException;
@@ -132,6 +133,7 @@ class KubernetesDockerRunner implements DockerRunner {
   private final Stats stats;
   private final KubernetesGCPServiceAccountSecretManager serviceAccountSecretManager;
   private final Debug debug;
+  private final Storage storage;
   private final int pollPodsIntervalSeconds;
   private final int podDeletionDelaySeconds;
   private final Time time;
@@ -140,13 +142,14 @@ class KubernetesDockerRunner implements DockerRunner {
 
   KubernetesDockerRunner(NamespacedKubernetesClient client, StateManager stateManager, Stats stats,
                          KubernetesGCPServiceAccountSecretManager serviceAccountSecretManager,
-                         Debug debug, int pollPodsIntervalSeconds, int podDeletionDelaySeconds,
-                         Time time) {
+                         Debug debug, Storage storage, int pollPodsIntervalSeconds,
+                         int podDeletionDelaySeconds, Time time) {
     this.stateManager = Objects.requireNonNull(stateManager);
     this.client = Objects.requireNonNull(client);
     this.stats = Objects.requireNonNull(stats);
     this.serviceAccountSecretManager = Objects.requireNonNull(serviceAccountSecretManager);
     this.debug = debug;
+    this.storage = Objects.requireNonNull(storage);
     this.pollPodsIntervalSeconds = pollPodsIntervalSeconds;
     this.podDeletionDelaySeconds = podDeletionDelaySeconds;
     this.time = Objects.requireNonNull(time);
@@ -154,8 +157,8 @@ class KubernetesDockerRunner implements DockerRunner {
 
   KubernetesDockerRunner(NamespacedKubernetesClient client, StateManager stateManager, Stats stats,
                          KubernetesGCPServiceAccountSecretManager serviceAccountSecretManager,
-                         Debug debug) {
-    this(client, stateManager, stats, serviceAccountSecretManager, debug,
+                         Debug debug, Storage storage) {
+    this(client, stateManager, stats, serviceAccountSecretManager, debug, storage,
         DEFAULT_POLL_PODS_INTERVAL_SECONDS, DEFAULT_POD_DELETION_DELAY_SECONDS, DEFAULT_TIME);
   }
 
@@ -443,8 +446,8 @@ class KubernetesDockerRunner implements DockerRunner {
         .watch(new PodWatcher());
   }
 
-  private Set<WorkflowInstance> getRunningWorkflowInstances() {
-    return stateManager.activeStates()
+  private Set<WorkflowInstance> getRunningWorkflowInstances() throws IOException {
+    return storage.readActiveWorkflowInstances()
         .values()
         .stream()
         .filter(runState -> runState.state().equals(RUNNING))
@@ -476,7 +479,13 @@ class KubernetesDockerRunner implements DockerRunner {
   }
 
   private synchronized void tryPollPods() {
-    final Set<WorkflowInstance> runningWorkflowInstances = getRunningWorkflowInstances();
+    final Set<WorkflowInstance> runningWorkflowInstances;
+    try {
+      runningWorkflowInstances = getRunningWorkflowInstances();
+    } catch (IOException e) {
+      LOG.warn("Error retrieving active states");
+      throw new RuntimeException(e);
+    }
     final PodList list = client.pods().list();
     examineRunningWFISandAssociatedPods(runningWorkflowInstances, list);
 
@@ -513,13 +522,19 @@ class KubernetesDockerRunner implements DockerRunner {
   private Optional<RunState> lookupPodRunState(Pod pod, WorkflowInstance workflowInstance) {
     final String podName = pod.getMetadata().getName();
 
-    final RunState runState = stateManager.get(workflowInstance);
-    if (runState == null) {
+    final Optional<RunState> runState;
+    try {
+      runState = storage.readActiveWorkflowInstance(workflowInstance);
+    } catch (IOException e) {
+      LOG.warn("Couldn't find active state for {}", workflowInstance.toKey(), e);
+      throw new RuntimeException(e);
+    }
+    if (!runState.isPresent()) {
       LOG.debug("Pod event for unknown or inactive workflow instance {}", workflowInstance);
       return Optional.empty();
     }
 
-    final Optional<String> executionIdOpt = runState.data().executionId();
+    final Optional<String> executionIdOpt = runState.get().data().executionId();
     if (!executionIdOpt.isPresent()) {
       LOG.debug("Pod event for state with no current executionId: {}", podName);
       return Optional.empty();
@@ -532,7 +547,7 @@ class KubernetesDockerRunner implements DockerRunner {
       return Optional.empty();
     }
 
-    return Optional.of(runState);
+    return runState;
   }
 
   private void emitPodEvents(Watcher.Action action, Pod pod, RunState runState) {

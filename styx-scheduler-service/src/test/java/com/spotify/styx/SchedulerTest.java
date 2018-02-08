@@ -112,6 +112,7 @@ public class SchedulerTest {
   @Mock StyxConfig config;
   @Mock WorkflowExecutionGate gate;
   @Mock StateManager stateManager;
+  @Mock Storage storage;
 
   @Before
   public void setUp() throws Exception {
@@ -152,18 +153,19 @@ public class SchedulerTest {
     workflowCache.store(workflow);
   }
 
-  private void populateActiveStates(RunState... runStates) throws IsClosedException {
+  private void populateActiveStates(RunState... runStates) throws IsClosedException, IOException {
     for (RunState runState : runStates) {
       activeStates.put(runState.workflowInstance(), runState);
     }
-    when(stateManager.activeStates()).thenReturn(activeStates);
+    when(storage.readActiveWorkflowInstances()).thenReturn(activeStates);
   }
 
-  private void removeActiveStates(Set<WorkflowInstance> workflowInstances) throws IsClosedException {
+  private void removeActiveStates(Set<WorkflowInstance> workflowInstances)
+      throws IsClosedException, IOException {
     for (WorkflowInstance workflowInstance : workflowInstances) {
       activeStates.remove(workflowInstance);
     }
-    when(stateManager.activeStates()).thenReturn(activeStates);
+    when(storage.readActiveWorkflowInstances()).thenReturn(activeStates);
   }
 
   private Workflow workflowUsingResources(WorkflowId id, String... resources) {

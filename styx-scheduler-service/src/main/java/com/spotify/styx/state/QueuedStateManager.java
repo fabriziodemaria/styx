@@ -35,7 +35,6 @@ import com.spotify.styx.util.IsClosedException;
 import com.spotify.styx.util.Time;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -218,26 +217,6 @@ public class QueuedStateManager implements StateManager {
 
     // Execute output handler(s)
     outputHandler.transitionInto(runState);
-  }
-
-  @Override
-  public Map<WorkflowInstance, RunState> activeStates() {
-    try {
-      return storage.readActiveWorkflowInstances();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  @Override
-  public RunState get(WorkflowInstance workflowInstance) {
-    final Optional<RunState> runStateOptional;
-    try {
-      runStateOptional = storage.readActiveWorkflowInstance(workflowInstance);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-    return runStateOptional.orElse(null);
   }
 
   @Override

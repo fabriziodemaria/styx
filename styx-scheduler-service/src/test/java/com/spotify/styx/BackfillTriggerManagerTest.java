@@ -116,8 +116,7 @@ public class BackfillTriggerManagerTest {
     when(storage.config()).thenReturn(config);
 
     workflowCache = new InMemWorkflowCache();
-    backfillTriggerManager = new BackfillTriggerManager(stateManager, workflowCache, storage,
-                                                        triggerListener);
+    backfillTriggerManager = new BackfillTriggerManager(workflowCache, storage, triggerListener);
   }
 
   @After
@@ -158,7 +157,7 @@ public class BackfillTriggerManagerTest {
 
     final WorkflowInstance wfi1 = WorkflowInstance.create(WORKFLOW_ID1, "2016-12-02T23");
 
-    when(stateManager.activeStates()).thenReturn(ImmutableMap.of(
+    when(storage.readActiveWorkflowInstances()).thenReturn(ImmutableMap.of(
         wfi1, RunState.create(wfi1, State.RUNNING, StateData.newBuilder()
             .trigger(Trigger.backfill("backfill-1"))
             .build())));
@@ -212,7 +211,7 @@ public class BackfillTriggerManagerTest {
     final WorkflowInstance wfi1 = WorkflowInstance.create(WORKFLOW_ID1, "2016-12-02T22");
     final WorkflowInstance wfi2 = WorkflowInstance.create(WORKFLOW_ID1, "2016-12-02T23");
 
-    when(stateManager.activeStates()).thenReturn(ImmutableMap.of(
+    when(storage.readActiveWorkflowInstances()).thenReturn(ImmutableMap.of(
         wfi1, RunState.create(wfi1, State.RUNNING, StateData.newBuilder()
             .trigger(Trigger.backfill("backfill-1"))
             .build()),

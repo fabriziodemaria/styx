@@ -35,6 +35,7 @@ import com.spotify.styx.monitoring.Stats;
 import com.spotify.styx.state.RunState;
 import com.spotify.styx.state.StateData;
 import com.spotify.styx.state.StateManager;
+import com.spotify.styx.storage.Storage;
 import com.spotify.styx.testdata.TestData;
 import com.spotify.styx.util.Debug;
 import io.fabric8.kubernetes.api.model.ContainerState;
@@ -48,9 +49,11 @@ import io.fabric8.kubernetes.api.model.PodStatus;
 import io.fabric8.kubernetes.client.NamespacedKubernetesClient;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.PodResource;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -73,10 +76,8 @@ public class KubernetesDockerRunnerPodPollerTest {
       DockerRunner.RunSpec.simple("eid2", "busybox");
   private final static KubernetesSecretSpec SECRET_SPEC = KubernetesSecretSpec.builder().build();
 
-  @Mock
-  NamespacedKubernetesClient k8sClient;
-  @Mock
-  MixedOperation<Pod, PodList, DoneablePod, PodResource<Pod, DoneablePod>> pods;
+  @Mock NamespacedKubernetesClient k8sClient;
+  @Mock MixedOperation<Pod, PodList, DoneablePod, PodResource<Pod, DoneablePod>> pods;
   PodList podList;
   @Mock PodResource<Pod, DoneablePod> namedPod1;
   @Mock PodResource<Pod, DoneablePod> namedPod2;
@@ -84,10 +85,9 @@ public class KubernetesDockerRunnerPodPollerTest {
   @Mock ContainerStatus containerStatus;
   @Mock ContainerState containerState;
   @Mock ContainerStateTerminated containerStateTerminated;
-  @Mock
-  StateManager stateManager;
-  @Mock
-  Stats stats;
+  @Mock StateManager stateManager;
+  @Mock Stats stats;
+  @Mock Storage storage;
 
   @Mock KubernetesGCPServiceAccountSecretManager serviceAccountSecretManager;
   @Mock Debug debug;
@@ -101,7 +101,7 @@ public class KubernetesDockerRunnerPodPollerTest {
     when(k8sClient.inNamespace(any(String.class))).thenReturn(k8sClient);
     when(k8sClient.pods()).thenReturn(pods);
 
-    kdr = new KubernetesDockerRunner(k8sClient, stateManager, stats, serviceAccountSecretManager, debug);
+    kdr = new KubernetesDockerRunner(k8sClient, stateManager, stats, serviceAccountSecretManager, debug, storage);
     podList = new PodList();
     podList.setMetadata(new ListMeta());
     podList.getMetadata().setResourceVersion("4711");
@@ -256,7 +256,8 @@ public class KubernetesDockerRunnerPodPollerTest {
     verify(k8sClient.pods(), never()).delete();
   }
 
-  private void setupActiveInstances(RunState.State state, String podName1, String podName2) {
+  private void setupActiveInstances(RunState.State state, String podName1, String podName2)
+      throws IOException {
     StateData stateData = StateData.newBuilder().executionId(podName1).build();
     StateData stateData2 = StateData.newBuilder().executionId(podName2).build();
     Map<WorkflowInstance, RunState> map = new HashMap<>();
@@ -264,8 +265,8 @@ public class KubernetesDockerRunnerPodPollerTest {
     RunState runState2 = RunState.create(WORKFLOW_INSTANCE_2, state, stateData2);
     map.put(WORKFLOW_INSTANCE, runState);
     map.put(WORKFLOW_INSTANCE_2, runState2);
-    when(stateManager.get(WORKFLOW_INSTANCE)).thenReturn(runState);
-    when(stateManager.get(WORKFLOW_INSTANCE_2)).thenReturn(runState2);
-    when(stateManager.activeStates()).thenReturn(map);
+    when(storage.readActiveWorkflowInstance(WORKFLOW_INSTANCE)).thenReturn(Optional.of(runState));
+    when(storage.readActiveWorkflowInstance(WORKFLOW_INSTANCE_2)).thenReturn(Optional.of(runState2));
+    when(storage.readActiveWorkflowInstances()).thenReturn(map);
   }
 }

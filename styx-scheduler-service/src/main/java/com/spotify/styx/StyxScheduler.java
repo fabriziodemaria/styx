@@ -160,6 +160,7 @@ public class StyxScheduler implements AppInit {
   private final WorkflowExecutionGateFactory executionGateFactory;
 
   private StateManager stateManager;
+  private Storage storage;
   private Scheduler scheduler;
   private TriggerManager triggerManager;
   private BackfillTriggerManager backfillTriggerManager;
@@ -184,7 +185,8 @@ public class StyxScheduler implements AppInit {
         StateManager stateManager,
         ScheduledExecutorService scheduler,
         Stats stats,
-        Debug debug);
+        Debug debug,
+        Storage storage);
   }
 
   @FunctionalInterface
@@ -344,7 +346,7 @@ public class StyxScheduler implements AppInit {
     final Supplier<String> dockerId = () -> styxConfig.get().globalDockerRunnerId();
     final Debug debug = () -> styxConfig.get().debugEnabled();
     final DockerRunner routingDockerRunner = DockerRunner.routing(
-        id -> dockerRunnerFactory.create(id, environment, stateManager, executor, stats, debug),
+        id -> dockerRunnerFactory.create(id, environment, stateManager, executor, stats, debug, storage),
         dockerId);
     final DockerRunner dockerRunner = instrument(DockerRunner.class, routingDockerRunner, stats, time);
 
@@ -363,7 +365,7 @@ public class StyxScheduler implements AppInit {
         new StateInitializingTrigger(stateManager);
     final TriggerManager triggerManager = new TriggerManager(trigger, time, storage, stats);
     final BackfillTriggerManager backfillTriggerManager =
-        new BackfillTriggerManager(stateManager, workflowCache, storage, trigger);
+        new BackfillTriggerManager(workflowCache, storage, trigger);
 
     final WorkflowInitializer workflowInitializer = new WorkflowInitializer(storage, time);
     final BiConsumer<Optional<Workflow>, Optional<Workflow>> workflowConsumer =
@@ -371,11 +373,11 @@ public class StyxScheduler implements AppInit {
     final Consumer<Workflow> workflowRemoveListener =
         workflowRemoved(workflowCache, storage, workflowConsumer);
     final Consumer<Workflow> workflowChangeListener =
-        workflowChanged(workflowCache, workflowInitializer, stats, stateManager, workflowConsumer);
+        workflowChanged(workflowCache, workflowInitializer, stats, storage, workflowConsumer);
 
     final Scheduler scheduler = new Scheduler(time, timeoutConfig, stateManager, workflowCache,
-                                              storage, resourceDecorator, stats, dequeueRateLimiter,
-                                              executionGateFactory.apply(environment, storage));
+        storage, resourceDecorator, stats, dequeueRateLimiter,
+        executionGateFactory.apply(environment, storage));
 
     final Cleaner cleaner = new Cleaner(dockerRunner);
 
@@ -386,17 +388,18 @@ public class StyxScheduler implements AppInit {
     startScheduler(scheduler, executor);
     startRuntimeConfigUpdate(styxConfig, executor, dequeueRateLimiter);
     startCleaner(cleaner, executor);
-    setupMetrics(stateManager, workflowCache, storage, dequeueRateLimiter, stats, eventTransitionExecutorQueue);
+    setupMetrics(storage, workflowCache, dequeueRateLimiter, stats, eventTransitionExecutorQueue);
 
     final SchedulerResource schedulerResource =
         new SchedulerResource(stateManager, trigger, workflowChangeListener, workflowRemoveListener,
-                              storage, time, new WorkflowValidator(new DockerImageValidator()));
+            storage, time, new WorkflowValidator(new DockerImageValidator()));
 
     environment.routingEngine()
         .registerAutoRoute(Route.sync("GET", "/ping", rc -> "pong"))
         .registerRoutes(Api.withCommonMiddleware(schedulerResource.routes()));
 
     this.stateManager = stateManager;
+    this.storage = storage;
     this.scheduler = scheduler;
     this.triggerManager = triggerManager;
     this.backfillTriggerManager = backfillTriggerManager;
@@ -410,8 +413,8 @@ public class StyxScheduler implements AppInit {
   }
 
   @VisibleForTesting
-  RunState getState(WorkflowInstance workflowInstance) {
-    return stateManager.get(workflowInstance);
+  Optional<RunState> getState(WorkflowInstance workflowInstance) throws IOException {
+    return storage.readActiveWorkflowInstance((workflowInstance));
   }
 
   @VisibleForTesting
@@ -482,7 +485,7 @@ public class StyxScheduler implements AppInit {
   }
 
   private static void startRuntimeConfigUpdate(Supplier<StyxConfig> config, ScheduledExecutorService exec,
-      RateLimiter submissionRateLimiter) {
+                                               RateLimiter submissionRateLimiter) {
     exec.scheduleAtFixedRate(
         guard(() -> updateRuntimeConfig(config, submissionRateLimiter)),
         0,
@@ -501,14 +504,13 @@ public class StyxScheduler implements AppInit {
       }
     } catch (Exception e) {
       LOG.warn("Failed to fetch the submission rate config from storage, "
-          + "skipping RateLimiter update");
+               + "skipping RateLimiter update");
     }
   }
 
   private void setupMetrics(
-      StateManager stateManager,
-      WorkflowCache workflowCache,
       Storage storage,
+      WorkflowCache workflowCache,
       RateLimiter submissionRateLimiter,
       Stats stats,
       BlockingQueue<Runnable> eventTransitionExecutorQueue) {
@@ -537,23 +539,40 @@ public class StyxScheduler implements AppInit {
             .filter(workflow -> workflow.configuration().dockerTerminationLogging())
             .count());
 
-    final Map<WorkflowInstance, RunState> activeStates = stateManager.activeStates();
+    final Map<WorkflowInstance, RunState> activeStates;
+    try {
+      activeStates = storage.readActiveWorkflowInstances();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
     Arrays.stream(RunState.State.values()).forEach(state -> {
       TriggerUtil.triggerTypesList().forEach(triggerType ->
           stats.registerActiveStatesMetric(
               state,
               triggerType,
-              () -> stateManager.activeStates().values().stream()
-                  .filter(runState -> runState.state().equals(state))
-                  .filter(runState -> runState.data().trigger().isPresent() && triggerType
-                      .equals(TriggerUtil.triggerType(runState.data().trigger().get())))
-                  .count()));
+              () -> {
+                try {
+                  return storage.readActiveWorkflowInstances().values().stream()
+                      .filter(runState -> runState.state().equals(state))
+                      .filter(runState -> runState.data().trigger().isPresent() && triggerType
+                          .equals(TriggerUtil.triggerType(runState.data().trigger().get())))
+                      .count();
+                } catch (IOException e) {
+                  throw new RuntimeException(e);
+                }
+              }));
       stats.registerActiveStatesMetric(
           state,
-          "none", () -> stateManager.activeStates().values().stream()
-              .filter(runState -> runState.state().equals(state))
-              .filter(runState -> !runState.data().trigger().isPresent())
-              .count());
+          "none", () -> {
+            try {
+              return storage.readActiveWorkflowInstances().values().stream()
+                  .filter(runState -> runState.state().equals(state))
+                  .filter(runState -> !runState.data().trigger().isPresent())
+                  .count();
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
+          });
     });
 
     workflowCache.all().forEach(workflow -> stats.registerActiveStatesMetric(
@@ -569,14 +588,20 @@ public class StyxScheduler implements AppInit {
       WorkflowCache cache,
       WorkflowInitializer workflowInitializer,
       Stats stats,
-      StateManager stateManager,
+      Storage storage,
       BiConsumer<Optional<Workflow>, Optional<Workflow>> workflowConsumer) {
     return (workflow) -> {
       stats.registerActiveStatesMetric(
           workflow.id(),
-          () -> stateManager.activeStates().keySet().stream()
-              .filter(wfi -> workflow.id().equals(wfi.workflowId()))
-              .count());
+          () -> {
+            try {
+              return storage.readActiveWorkflowInstances().keySet().stream()
+                  .filter(wfi -> workflow.id().equals(wfi.workflowId()))
+                  .count();
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
+          });
 
       final Optional<Workflow> oldWorkflowOptional = cache.workflow(workflow.id());
 
@@ -639,7 +664,8 @@ public class StyxScheduler implements AppInit {
       StateManager stateManager,
       ScheduledExecutorService scheduler,
       Stats stats,
-      Debug debug) {
+      Debug debug,
+      Storage storage) {
     final Config config = environment.config();
     final Closer closer = environment.closer();
 
@@ -651,7 +677,7 @@ public class StyxScheduler implements AppInit {
           config, id, createGkeClient(), DefaultKubernetesClient::new));
       final ServiceAccountKeyManager serviceAccountKeyManager = createServiceAccountKeyManager();
       return closer.register(DockerRunner.kubernetes(kubernetes, stateManager, stats,
-          serviceAccountKeyManager, debug));
+          serviceAccountKeyManager, debug, storage));
     }
   }
 
@@ -688,7 +714,7 @@ public class StyxScheduler implements AppInit {
   }
 
   static NamespacedKubernetesClient getKubernetesClient(Config rootConfig, String id,
-      Container gke, KubernetesClientFactory clientFactory) {
+                                                        Container gke, KubernetesClientFactory clientFactory) {
     try {
       final Config config = rootConfig
           .getConfig(GKE_CLUSTER_PATH)
@@ -696,9 +722,9 @@ public class StyxScheduler implements AppInit {
 
       final Cluster cluster = gke.projects().locations().clusters()
           .get(String.format("projects/%s/locations/%s/clusters/%s",
-                             config.getString(GKE_CLUSTER_PROJECT_ID),
-                             config.getString(GKE_CLUSTER_ZONE),
-                             config.getString(GKE_CLUSTER_ID))).execute();
+              config.getString(GKE_CLUSTER_PROJECT_ID),
+              config.getString(GKE_CLUSTER_ZONE),
+              config.getString(GKE_CLUSTER_ID))).execute();
 
       final io.fabric8.kubernetes.client.Config kubeConfig = new ConfigBuilder()
           .withMasterUrl("https://" + cluster.getEndpoint())

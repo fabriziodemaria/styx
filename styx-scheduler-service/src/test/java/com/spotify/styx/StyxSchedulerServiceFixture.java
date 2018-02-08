@@ -128,7 +128,7 @@ public class StyxSchedulerServiceFixture {
     StyxScheduler.ExecutorFactory executorFactory = (ts, tf) -> executor;
     StyxScheduler.PublisherFactory publisherFactory = (env) -> Publisher.NOOP;
     StyxScheduler.DockerRunnerFactory dockerRunnerFactory =
-        (id, env, states, exec, stats, debug) -> fakeDockerRunner();
+        (id, env, states, exec, stats, debug, storage) -> fakeDockerRunner();
     StyxScheduler.EventConsumerFactory eventConsumerFactory =
         (env, stats) -> (event, state) ->  transitionedEvents.add(Tuple.of(event, state.state()));
     StyxScheduler.WorkflowConsumerFactory workflowConsumerFactory =
@@ -167,7 +167,7 @@ public class StyxSchedulerServiceFixture {
     styxScheduler.receive(event).toCompletableFuture().get(1, MINUTES);
   }
 
-  RunState getState(WorkflowInstance workflowInstance) {
+  Optional<RunState> getState(WorkflowInstance workflowInstance) throws IOException {
     return styxScheduler.getState(workflowInstance);
   }
 
@@ -299,13 +299,13 @@ public class StyxSchedulerServiceFixture {
 
   void awaitWorkflowInstanceState(WorkflowInstance instance, RunState.State state) {
     await().atMost(30, SECONDS).until(() -> {
-      final RunState runState = getState(instance);
-      return runState != null && runState.state() == state;
+      final Optional<RunState> runState = getState(instance);
+      return runState.isPresent() && runState.get().state() == state;
     });
   }
 
   void awaitWorkflowInstanceCompletion(WorkflowInstance workflowInstance) {
-    await().atMost(30, SECONDS).until(() -> getState(workflowInstance) == null);
+    await().atMost(30, SECONDS).until(() -> !getState(workflowInstance).isPresent());
   }
 
   void awaitUntilConsumedEvent(SequenceEvent sequenceEvent, RunState.State state) {

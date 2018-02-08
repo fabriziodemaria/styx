@@ -28,7 +28,6 @@ import static java.util.stream.Collectors.toList;
 import com.spotify.styx.model.Backfill;
 import com.spotify.styx.model.BackfillBuilder;
 import com.spotify.styx.model.Workflow;
-import com.spotify.styx.state.StateManager;
 import com.spotify.styx.state.Trigger;
 import com.spotify.styx.storage.Storage;
 import com.spotify.styx.util.AlreadyInitializedException;
@@ -54,12 +53,10 @@ public class BackfillTriggerManager {
 
   private final TriggerListener triggerListener;
   private final Storage storage;
-  private final StateManager stateManager;
   private final WorkflowCache workflowCache;
 
-  public BackfillTriggerManager(StateManager stateManager,
-                   WorkflowCache workflowCache, Storage storage, TriggerListener triggerListener) {
-    this.stateManager = Objects.requireNonNull(stateManager);
+  public BackfillTriggerManager(WorkflowCache workflowCache, Storage storage,
+                                TriggerListener triggerListener) {
     this.workflowCache = Objects.requireNonNull(workflowCache);
     this.storage = Objects.requireNonNull(storage);
     this.triggerListener = Objects.requireNonNull(triggerListener);
@@ -74,7 +71,12 @@ public class BackfillTriggerManager {
       return;
     }
 
-    final Map<String, Long> backfillStates = getBackfillStates();
+    final Map<String, Long> backfillStates;
+    try {
+      backfillStates = getBackfillStates();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
     backfills.forEach(backfill -> triggerBackfill(backfill, backfillStates));
   }
 
@@ -128,8 +130,8 @@ public class BackfillTriggerManager {
     }
   }
 
-  private Map<String, Long> getBackfillStates() {
-    final List<InstanceState> activeStates = stateManager.activeStates().entrySet().stream()
+  private Map<String, Long> getBackfillStates() throws IOException {
+    final List<InstanceState> activeStates = storage.readActiveWorkflowInstances().entrySet().stream()
         .map(entry -> InstanceState.create(entry.getKey(), entry.getValue()))
         .collect(toList());
 

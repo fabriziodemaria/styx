@@ -47,6 +47,7 @@ import com.spotify.styx.state.RunState;
 import com.spotify.styx.state.RunState.State;
 import com.spotify.styx.state.StateData;
 import com.spotify.styx.state.StateManager;
+import com.spotify.styx.storage.Storage;
 import com.spotify.styx.testdata.TestData;
 import com.spotify.styx.util.Debug;
 import com.spotify.styx.util.IsClosedException;
@@ -151,6 +152,7 @@ public class KubernetesDockerRunnerTest {
   @Mock Debug debug;
   @Mock Time time;
   @Mock StateManager stateManager;
+  @Mock Storage storage;
 
   @Captor ArgumentCaptor<Watcher<Pod>> watchCaptor;
   @Captor ArgumentCaptor<Pod> podCaptor;
@@ -183,7 +185,7 @@ public class KubernetesDockerRunnerTest {
 
     when(time.get()).thenReturn(FIXED_INSTANT);
 
-    kdr = new KubernetesDockerRunner(k8sClient, stateManager, stats, serviceAccountSecretManager, debug, NO_POLL,
+    kdr = new KubernetesDockerRunner(k8sClient, stateManager, stats, serviceAccountSecretManager, debug, storage, NO_POLL,
                                      POD_DELETION_DELAY_SECONDS, time);
     kdr.init();
 
@@ -198,8 +200,8 @@ public class KubernetesDockerRunnerTest {
     StateData stateData = StateData.newBuilder().executionId(POD_NAME).build();
     RunState runState = RunState.create(WORKFLOW_INSTANCE, State.SUBMITTED, stateData);
 
-    when(stateManager.activeStates()).thenReturn(ImmutableMap.of(WORKFLOW_INSTANCE, runState));
-    when(stateManager.get(WORKFLOW_INSTANCE)).thenReturn(runState);
+    when(storage.readActiveWorkflowInstances()).thenReturn(ImmutableMap.of(WORKFLOW_INSTANCE, runState));
+    when(storage.readActiveWorkflowInstance(WORKFLOW_INSTANCE)).thenReturn(Optional.of(runState));
   }
 
   @After
@@ -665,7 +667,7 @@ public class KubernetesDockerRunnerTest {
 
     // Start a new runner
     kdr = new KubernetesDockerRunner(k8sClient, stateManager, stats, serviceAccountSecretManager,
-        debug, NO_POLL, 0, time);
+        debug, storage, NO_POLL, 0, time);
     kdr.init();
 
     // Make the runner poll states for all pods
@@ -684,7 +686,7 @@ public class KubernetesDockerRunnerTest {
     // Set up a runner with short poll interval to avoid this test having to wait a long time for the poll
     kdr.close();
     kdr = new KubernetesDockerRunner(k8sClient, stateManager, stats, serviceAccountSecretManager,
-        debug, 1, 0, time);
+        debug, storage, 1, 0, time);
     kdr.init();
     kdr.restore();
 
