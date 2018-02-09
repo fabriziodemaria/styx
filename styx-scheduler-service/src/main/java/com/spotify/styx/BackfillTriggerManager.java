@@ -131,7 +131,7 @@ public class BackfillTriggerManager {
   }
 
   private Map<String, Long> getBackfillStates() throws IOException {
-    final List<InstanceState> activeStates = storage.readActiveWorkflowInstances().entrySet().stream()
+    final List<InstanceState> activeStates = storage.readActiveStates().entrySet().stream()
         .map(entry -> InstanceState.create(entry.getKey(), entry.getValue()))
         .collect(toList());
 

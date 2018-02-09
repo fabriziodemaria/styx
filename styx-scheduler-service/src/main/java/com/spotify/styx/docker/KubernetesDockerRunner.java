@@ -447,7 +447,7 @@ class KubernetesDockerRunner implements DockerRunner {
   }
 
   private Set<WorkflowInstance> getRunningWorkflowInstances() throws IOException {
-    return storage.readActiveWorkflowInstances()
+    return storage.readActiveStates()
         .values()
         .stream()
         .filter(runState -> runState.state().equals(RUNNING))
@@ -524,7 +524,7 @@ class KubernetesDockerRunner implements DockerRunner {
 
     final Optional<RunState> runState;
     try {
-      runState = storage.readActiveWorkflowInstance(workflowInstance);
+      runState = storage.readActiveState(workflowInstance);
     } catch (IOException e) {
       LOG.warn("Couldn't find active state for {}", workflowInstance.toKey(), e);
       throw new RuntimeException(e);

@@ -265,8 +265,8 @@ public class KubernetesDockerRunnerPodPollerTest {
     RunState runState2 = RunState.create(WORKFLOW_INSTANCE_2, state, stateData2);
     map.put(WORKFLOW_INSTANCE, runState);
     map.put(WORKFLOW_INSTANCE_2, runState2);
-    when(storage.readActiveWorkflowInstance(WORKFLOW_INSTANCE)).thenReturn(Optional.of(runState));
-    when(storage.readActiveWorkflowInstance(WORKFLOW_INSTANCE_2)).thenReturn(Optional.of(runState2));
-    when(storage.readActiveWorkflowInstances()).thenReturn(map);
+    when(storage.readActiveState(WORKFLOW_INSTANCE)).thenReturn(Optional.of(runState));
+    when(storage.readActiveState(WORKFLOW_INSTANCE_2)).thenReturn(Optional.of(runState2));
+    when(storage.readActiveStates()).thenReturn(map);
   }
 }

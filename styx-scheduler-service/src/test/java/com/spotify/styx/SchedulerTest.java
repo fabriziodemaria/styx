@@ -157,7 +157,7 @@ public class SchedulerTest {
     for (RunState runState : runStates) {
       activeStates.put(runState.workflowInstance(), runState);
     }
-    when(storage.readActiveWorkflowInstances()).thenReturn(activeStates);
+    when(storage.readActiveStates()).thenReturn(activeStates);
   }
 
   private void removeActiveStates(Set<WorkflowInstance> workflowInstances)
@@ -165,7 +165,7 @@ public class SchedulerTest {
     for (WorkflowInstance workflowInstance : workflowInstances) {
       activeStates.remove(workflowInstance);
     }
-    when(storage.readActiveWorkflowInstances()).thenReturn(activeStates);
+    when(storage.readActiveStates()).thenReturn(activeStates);
   }
 
   private Workflow workflowUsingResources(WorkflowId id, String... resources) {

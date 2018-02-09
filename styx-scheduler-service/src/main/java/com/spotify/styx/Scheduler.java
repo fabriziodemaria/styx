@@ -136,7 +136,7 @@ public class Scheduler {
 
     final List<InstanceState> activeStates;
     try {
-      activeStates = storage.readActiveWorkflowInstances().entrySet().stream()
+      activeStates = storage.readActiveStates().entrySet().stream()
           .map(entry -> InstanceState.create(entry.getKey(), entry.getValue()))
           .collect(toList());
     } catch (IOException e) {

@@ -414,7 +414,7 @@ public class StyxScheduler implements AppInit {
 
   @VisibleForTesting
   Optional<RunState> getState(WorkflowInstance workflowInstance) throws IOException {
-    return storage.readActiveWorkflowInstance((workflowInstance));
+    return storage.readActiveState((workflowInstance));
   }
 
   @VisibleForTesting
@@ -541,7 +541,7 @@ public class StyxScheduler implements AppInit {
 
     final Map<WorkflowInstance, RunState> activeStates;
     try {
-      activeStates = storage.readActiveWorkflowInstances();
+      activeStates = storage.readActiveStates();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -552,7 +552,7 @@ public class StyxScheduler implements AppInit {
               triggerType,
               () -> {
                 try {
-                  return storage.readActiveWorkflowInstances().values().stream()
+                  return storage.readActiveStates().values().stream()
                       .filter(runState -> runState.state().equals(state))
                       .filter(runState -> runState.data().trigger().isPresent() && triggerType
                           .equals(TriggerUtil.triggerType(runState.data().trigger().get())))
@@ -565,7 +565,7 @@ public class StyxScheduler implements AppInit {
           state,
           "none", () -> {
             try {
-              return storage.readActiveWorkflowInstances().values().stream()
+              return storage.readActiveStates().values().stream()
                   .filter(runState -> runState.state().equals(state))
                   .filter(runState -> !runState.data().trigger().isPresent())
                   .count();
@@ -595,7 +595,7 @@ public class StyxScheduler implements AppInit {
           workflow.id(),
           () -> {
             try {
-              return storage.readActiveWorkflowInstances().keySet().stream()
+              return storage.readActiveStates().keySet().stream()
                   .filter(wfi -> workflow.id().equals(wfi.workflowId()))
                   .count();
             } catch (IOException e) {

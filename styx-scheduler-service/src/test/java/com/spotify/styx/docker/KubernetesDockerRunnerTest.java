@@ -200,8 +200,8 @@ public class KubernetesDockerRunnerTest {
     StateData stateData = StateData.newBuilder().executionId(POD_NAME).build();
     RunState runState = RunState.create(WORKFLOW_INSTANCE, State.SUBMITTED, stateData);
 
-    when(storage.readActiveWorkflowInstances()).thenReturn(ImmutableMap.of(WORKFLOW_INSTANCE, runState));
-    when(storage.readActiveWorkflowInstance(WORKFLOW_INSTANCE)).thenReturn(Optional.of(runState));
+    when(storage.readActiveStates()).thenReturn(ImmutableMap.of(WORKFLOW_INSTANCE, runState));
+    when(storage.readActiveState(WORKFLOW_INSTANCE)).thenReturn(Optional.of(runState));
   }
 
   @After
