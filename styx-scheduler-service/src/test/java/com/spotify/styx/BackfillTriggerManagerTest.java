@@ -33,6 +33,8 @@ import static org.mockito.Mockito.when;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.spotify.futures.CompletableFutures;
 import com.spotify.styx.model.Backfill;
 import com.spotify.styx.model.Resource;
@@ -49,11 +51,15 @@ import com.spotify.styx.state.StateData;
 import com.spotify.styx.state.StateManager;
 import com.spotify.styx.state.Trigger;
 import com.spotify.styx.storage.Storage;
+import com.spotify.styx.storage.StorageTransaction;
+import com.spotify.styx.storage.TransactionFunction;
 import com.spotify.styx.util.ParameterUtil;
 import com.spotify.styx.util.Time;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
@@ -61,10 +67,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 
@@ -100,10 +108,13 @@ public class BackfillTriggerManagerTest {
   @Mock Storage storage;
   @Mock StyxConfig config;
   @Mock StateManager stateManager;
+  @Mock StorageTransaction transaction;
 
   private WorkflowCache workflowCache;
 
   private BackfillTriggerManager backfillTriggerManager;
+
+  private Map<String, Backfill> backfills = Maps.newConcurrentMap();
 
   private ExecutorService executor = Executors.newCachedThreadPool();
 
@@ -111,11 +122,24 @@ public class BackfillTriggerManagerTest {
 
   @Before
   public void setUp() throws Exception {
+    backfills.clear();
     when(triggerListener.event(any(Workflow.class), any(Trigger.class), any(Instant.class)))
         .then(a -> CompletableFuture.completedFuture(null));
     when(storage.resources()).thenReturn(resourceLimits);
     when(config.globalConcurrency()).thenReturn(Optional.empty());
     when(storage.config()).thenReturn(config);
+    when(storage.runInTransaction(any())).thenAnswer(
+        a -> a.getArgumentAt(0, TransactionFunction.class).apply(transaction));
+
+    Map<String, Backfill> backfills = Maps.newConcurrentMap();
+    ArgumentCaptor<Backfill> backfillArgumentCaptor = ArgumentCaptor.forClass(Backfill.class);
+    when(transaction.storeBackfill(backfillArgumentCaptor.capture())).then(answer -> {
+      backfills.put(backfillArgumentCaptor.getValue().id(), backfillArgumentCaptor.getValue());
+      return backfillArgumentCaptor.getValue();
+    });
+    ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
+    when(storage.backfill(stringCaptor.capture())).then(answer -> Optional.of(backfills.get(stringCaptor.getValue())));
+
 
     workflowCache = new InMemWorkflowCache();
     backfillTriggerManager = new BackfillTriggerManager(stateManager, workflowCache, storage,
@@ -132,7 +156,8 @@ public class BackfillTriggerManagerTest {
     final Workflow workflow = workflowUsingResources(WORKFLOW_ID1);
     initWorkflow(workflow);
     final int concurrency = BACKFILL_1.concurrency();
-    when(storage.backfills(anyBoolean())).thenReturn(Collections.singletonList(BACKFILL_1));
+    backfills.put(BACKFILL_1.id(), BACKFILL_1);
+    when(storage.backfills(anyBoolean())).thenReturn(new ArrayList<>(backfills.values()));
 
     backfillTriggerManager.tick();
 

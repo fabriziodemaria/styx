@@ -114,6 +114,7 @@ class BackfillTriggerManager {
           break;
         }
       } catch (IOException e) {
+        System.out.println(e);
         // transaction failed, yield
         break;
       }
@@ -158,7 +159,6 @@ class BackfillTriggerManager {
                            .build());
       return false;
     }
-
     return true;
   }
 

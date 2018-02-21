@@ -207,6 +207,7 @@ public class QueuedStateManager implements StateManager {
           final PersistentWorkflowInstanceState nextPersistentState =
               PersistentWorkflowInstanceState.of(nextRunState, nextCounter);
           tx.updateActiveState(event.workflowInstance(), nextPersistentState);
+
         }
 
         final SequenceEvent sequenceEvent =
