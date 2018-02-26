@@ -39,6 +39,7 @@ import com.spotify.styx.util.Time;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -59,7 +60,7 @@ class BackfillTriggerManager {
   private static final String TICK_TYPE = UPPER_CAMEL.to(
       LOWER_UNDERSCORE, BackfillTriggerManager.class.getSimpleName());
 
-  private static Consumer<List<Backfill>> DEFAULT_SHUFFLER = Collections::shuffle;
+  static Consumer<List<Backfill>> DEFAULT_SHUFFLER = Collections::shuffle;
 
   private final TriggerListener triggerListener;
   private final Storage storage;
@@ -94,18 +95,21 @@ class BackfillTriggerManager {
   }
 
   void tick() {
+    LOG.debug("ticking backfill trigger manager");
     final Instant t0 = time.get();
 
-    final List<Backfill> backfills;
+    final List<Backfill> immutableBackfillList;
     try {
-      backfills = storage.backfills(false);
+      immutableBackfillList = storage.backfills(false);
     } catch (IOException e) {
       LOG.warn("Failed to get backfills", e);
       return;
     }
 
+    final List<Backfill> backfills = new ArrayList<>(immutableBackfillList);
     shuffler.accept(backfills);
 
+    LOG.debug("Found backfill number {}", backfills.size());
     backfills.forEach(backfill -> guard(() -> triggerAndProgress(backfill)).run());
 
     final long durationMillis = t0.until(time.get(), ChronoUnit.MILLIS);
@@ -119,7 +123,7 @@ class BackfillTriggerManager {
       storeBackfill(backfill.builder().halted(true).build());
       return;
     }
-
+    LOG.debug("Workflow present for backfill {}", workflowOpt.get());
     final Workflow workflow = workflowOpt.get();
 
     // this is best effort because querying active states is not strongly consistent so the
@@ -127,6 +131,7 @@ class BackfillTriggerManager {
     final int remainingCapacity =
         backfill.concurrency() - stateManager.activeStatesByTriggerId(backfill.id()).size();
 
+    LOG.debug("Remaining capacity for backfill {}", backfill);
     if (remainingCapacity < 1) {
       LOG.debug("No capacity left for backfill {}", backfill);
       return;
@@ -137,6 +142,8 @@ class BackfillTriggerManager {
     Instant nextTrigger;
     do {
       try {
+        LOG.debug("loopoing backfill {}, initialNT={}, remainingCapacity={}",
+            backfill, initialNextTrigger, remainingCapacity);
         nextTrigger = storage.runInTransaction(
             tx -> triggerNextPartitionAndProgress(tx, backfill.id(), workflow,
                                                   initialNextTrigger, remainingCapacity));
@@ -158,6 +165,8 @@ class BackfillTriggerManager {
     final Backfill momentBackfill = tx.backfill(id).orElseThrow(RuntimeException::new);
 
     final Instant partition = momentBackfill.nextTrigger();
+
+    LOG.debug("trigger and progress backfill for workflow {}", workflow);
 
     // best effort to prevent the case that after this scheduler instance reading
     // initialNextTrigger, the other scheduler instance managed to progress nextTrigger
@@ -201,6 +210,8 @@ class BackfillTriggerManager {
       LOG.debug("failed to trigger {} for backfill {}", partition, momentBackfill, e);
       throw new RuntimeException(e);
     }
+
+    LOG.debug("updating backfill nextTrigger for {}", momentBackfill);
 
     nextPartition = nextInstant(partition, momentBackfill.schedule());
 

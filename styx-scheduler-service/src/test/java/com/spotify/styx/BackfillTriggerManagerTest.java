@@ -19,6 +19,7 @@
  */
 package com.spotify.styx;
 
+import static com.spotify.styx.BackfillTriggerManager.DEFAULT_SHUFFLER;
 import static com.spotify.styx.util.ParameterUtil.toParameter;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
@@ -35,6 +36,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.spotify.futures.CompletableFutures;
 import com.spotify.styx.model.Backfill;
@@ -57,7 +59,6 @@ import com.spotify.styx.util.ParameterUtil;
 import com.spotify.styx.util.Time;
 import java.io.IOException;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -157,7 +158,12 @@ public class BackfillTriggerManagerTest {
     when(transaction.backfill(stringCaptor.capture()))
         .then(answer -> Optional.of(backfills.get(stringCaptor.getValue())));
 
-    when(storage.backfills(anyBoolean())).then(a -> new ArrayList<>(backfills.values()));
+    when(storage.backfills(anyBoolean())).then(a -> {
+
+      final ImmutableList.Builder<Backfill> builder = ImmutableList.builder();
+      builder.addAll(backfills.values());
+      return builder.build();
+    });
 
     when(storage.runInTransaction(any())).then(
         a -> a.getArgumentAt(0, TransactionFunction.class).apply(transaction));
@@ -171,6 +177,17 @@ public class BackfillTriggerManagerTest {
   @After
   public void tearDown() {
     executor.shutdownNow();
+  }
+
+  @Test
+  public void test1() {
+    backfillTriggerManager = new BackfillTriggerManager(stateManager, workflowCache, storage,
+        triggerListener, Stats.NOOP, TIME, DEFAULT_SHUFFLER);
+
+    backfills.put(BACKFILL_1.id(), BACKFILL_1);
+    backfills.put(BACKFILL_2.id(), BACKFILL_2);
+
+    backfillTriggerManager.tick();
   }
 
   @Test

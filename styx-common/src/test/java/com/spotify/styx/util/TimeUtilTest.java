@@ -192,7 +192,7 @@ public class TimeUtilTest {
 
   @Test
   public void shouldGetCorrectNumberOfInstants() {
-    final Instant lastTimeHours = Instant.parse("2016-01-19T09:00:00.00Z");
+    final Instant lastTimeHours = Instant.parse("2016-01-19T00:00:00.00Z");
     final Instant firstTimeHours = Instant.parse("2016-01-19T00:00:00.00Z");
     final Instant lastTimeDays = Instant.parse("2016-01-19T00:00:00.00Z");
     final Instant firstTimeDays = Instant.parse("2016-01-10T00:00:00.00Z");
@@ -201,7 +201,7 @@ public class TimeUtilTest {
     final Instant lastTimeMonths = Instant.parse("2016-01-01T00:00:00.00Z");
     final Instant firstTimeMonths = Instant.parse("2010-01-01T00:00:00.00Z");
 
-    assertThat(numberOfInstants(lastTimeHours, firstTimeHours, Schedule.HOURS), is(9));
+    assertThat(numberOfInstants(lastTimeHours, firstTimeHours, Schedule.HOURS), is(0));
     assertThat(numberOfInstants(lastTimeDays, firstTimeDays, Schedule.DAYS), is(9));
     assertThat(numberOfInstants(lastTimeWeeks, firstTimeWeeks, Schedule.WEEKS), is(1));
     assertThat(numberOfInstants(lastTimeMonths, firstTimeMonths, Schedule.YEARS), is(6));
